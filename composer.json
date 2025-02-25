@@ -1,0 +1,14 @@
+{
+    "require": {
+        "payload/payload-api": "^0.3.7"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "require-dev": {
+        "wp-coding-standards/wpcs": "^3.0",
+        "squizlabs/php_codesniffer": "*"
+    }
+}
