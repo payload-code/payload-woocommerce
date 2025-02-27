@@ -38,4 +38,4 @@ https://support.payload.com
 
 * Initial release
 
-[See full changelog](https://raw.githubusercontent.com/payload-code/payload-woocommerce/trunk/changelog.txt).
+[See full changelog](https://raw.githubusercontent.com/payload-code/payload-woocommerce/refs/heads/main/changelog.txt).
