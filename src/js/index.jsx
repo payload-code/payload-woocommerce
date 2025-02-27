@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { decodeEntities } from "@wordpress/html-entities";
-import { PaymentForm, PaymentMethodForm, Card } from "payload-react";
+import {
+  PaymentForm,
+  PaymentMethodForm,
+  Card,
+  PayloadInput,
+} from "payload-react";
 
 import "../css/style.scss";
 
@@ -12,6 +17,39 @@ const label =
   decodeEntities(settings.title) ||
   window.wp.i18n.__("Credit/Debit Card", "payload");
 
+const PaymentMethodFields = () => {
+  const [cardInvalidMessage, setCardInvalidMessage] = useState();
+  const [nameInvalidMessage, setNameInvalidMessage] = useState();
+
+  return (
+    <div class="pl-form-container">
+      <div className="pl-form-control">
+        <label className="pl-input-label">Name on card</label>
+        <PayloadInput
+          attr="account_holder"
+          placeholder="First and last"
+          onInvalid={(evt) => {
+            setNameInvalidMessage(evt.message);
+          }}
+          onValid={() => setNameInvalidMessage(null)}
+        />
+        <div className="pl-invalid-hint">{nameInvalidMessage}</div>
+      </div>
+      <div className="pl-form-control">
+        <label className="pl-input-label">Card details</label>
+        <Card
+          className="payload-card-input"
+          onInvalid={(evt) => {
+            setCardInvalidMessage(evt.message);
+          }}
+          onValid={() => setCardInvalidMessage(null)}
+        />
+        <div className="pl-invalid-hint">{cardInvalidMessage}</div>
+      </div>
+    </div>
+  );
+};
+
 const Content = (props) => {
   const { eventRegistration, emitResponse, billing } = props;
   const { onPaymentSetup } = eventRegistration;
@@ -19,7 +57,6 @@ const Content = (props) => {
   const paymentFormRef = useRef(null);
   const hasSubscription = !!props.cartData.extensions?.subscriptions?.length;
 
-  console.log(props);
   useEffect(() => {
     wp.apiFetch({ path: "wc/v3/custom" }).then((data) =>
       setClientToken(data.client_token)
@@ -37,11 +74,13 @@ const Content = (props) => {
           },
         };
       } catch (e) {
-        console.log(e, e.details);
+        let errorMessage;
+        if (e.data?.error_type != "InvalidAttributes")
+          errorMessage = e.data?.error_description;
 
         return {
           type: emitResponse.responseTypes.ERROR,
-          message: "There was an error",
+          message: errorMessage ?? "There was an error",
         };
       }
     });
@@ -62,7 +101,7 @@ const Content = (props) => {
       <PaymentForm
         ref={paymentFormRef}
         clientToken={clientToken}
-        styles={{ invalid: "is-invalid" }}
+        styles={{ invalid: "pl-input-invalid" }}
         preventDefaultOnSubmit={true}
         payment={{
           amount: billing.cartTotal.value / 100,
@@ -71,12 +110,7 @@ const Content = (props) => {
           },
         }}
       >
-        <Card
-          className="payload-card-input"
-          onInvalid={(evt) => {
-            alert(evt.message);
-          }}
-        />
+        <PaymentMethodFields />
       </PaymentForm>
     </>
   );
@@ -85,6 +119,7 @@ const Content = (props) => {
 const AddPaymentMethod = () => {
   const [clientToken, setClientToken] = useState();
   const [paymentMethodId, setPaymentMethodId] = useState();
+  const [generalErrorMessage, setGeneralErrorMessage] = useState();
   const addPaymentPaymentFormRef = useRef(null);
 
   useEffect(() => {
@@ -107,7 +142,11 @@ const AddPaymentMethod = () => {
         setPaymentMethodId(result.payment_method_id);
         removeListeners();
       } catch (e) {
-        console.log(e, e.details);
+        if (e.data?.error_type != "InvalidAttributes") {
+          setGeneralErrorMessage(
+            e.data?.error_description ?? "There was an error"
+          );
+        }
       }
     };
 
@@ -134,15 +173,13 @@ const AddPaymentMethod = () => {
       <PaymentMethodForm
         ref={addPaymentPaymentFormRef}
         clientToken={clientToken}
-        styles={{ invalid: "is-invalid" }}
+        styles={{ invalid: "pl-input-invalid" }}
         preventDefaultOnSubmit={true}
       >
-        <Card
-          className="payload-card-input"
-          onInvalid={(evt) => {
-            alert(evt.message);
-          }}
-        />
+        {!!generalErrorMessage && (
+          <div className="pl-form-error">{generalErrorMessage}</div>
+        )}
+        <PaymentMethodFields />
       </PaymentMethodForm>
       <input type="hidden" name="payment_method_id" value={paymentMethodId} />
     </>
@@ -184,7 +221,21 @@ const Block_Gateway = {
 
 registerPaymentMethod(Block_Gateway);
 
-if (document.querySelector("#payload-add-payment-method")) {
-  const domContainer = document.querySelector("#payload-add-payment-method");
-  ReactDOM.render(<AddPaymentMethod />, domContainer);
-}
+const mountPaymentMethodForm = () => {
+  if (document.querySelector("#payload-add-payment-method")) {
+    const domContainer = document.querySelector("#payload-add-payment-method");
+    ReactDOM.render(<AddPaymentMethod />, domContainer);
+  }
+};
+
+window.plMountPaymentMethodForm = () => {
+  if (document.readyState === "complete") {
+    mountPaymentMethodForm();
+  } else {
+    document.addEventListener("DOMContentLoaded", function () {
+      mountPaymentMethodForm();
+    });
+  }
+};
+
+window.plMountPaymentMethodForm();

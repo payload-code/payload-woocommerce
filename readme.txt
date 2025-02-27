@@ -15,6 +15,13 @@ Accept WooCommerce payments through Payload.com
 
 A WooCommerce Payment Gateway Plugin powered by Payload.com and designed to streamline your online transactions. This plugin seamlessly integrates with your WooCommerce store, enabling you to accept credit cards, debit cards, and a variety of digital payment methods.
 
+= Supports =
+
+- Products
+- Tokenization
+- WooCommerce Subscriptions
+- WooCommerce One Page Checkout
+
 == Installation ==
 
 1. Upload [`payload-woocommerce`](https://github.com/payload-code/payload-woocommerce/releases/latest/download/payload-woocommerce.zip) to the `/wp-content/plugins/` directory
@@ -26,11 +33,6 @@ A WooCommerce Payment Gateway Plugin powered by Payload.com and designed to stre
 = Where can I get more information? =
 
 https://support.payload.com
-
-== Screenshots ==
-
-1. Desktop view
-2. Mobile view
 
 == Changelog ==
 

@@ -30,6 +30,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_scheduled_subscription_payment_' . $this->id, array( $this, 'scheduled_subscription_payment' ), 10, 2 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
 	}
 
 	public function init_form_fields() {
@@ -48,8 +49,31 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		);
 	}
 
+	public function payment_scripts() {
+		wp_enqueue_style( 'payload-blocks-css', plugin_dir_url( __FILE__ ) . '../build/style-main.css', array(), '' );
+
+		wp_enqueue_script(
+			'payload-blocks-integration',
+			plugin_dir_url( __FILE__ ) . '../build/main.js',
+			array(
+
+				'wc-blocks-registry',
+				'wc-settings',
+				'wp-element',
+				'wp-html-entities',
+				'wp-i18n',
+			),
+			''
+		);
+
+		if ( function_exists( 'wp_set_script_translations' ) ) {
+			wp_set_script_translations( 'payload-blocks-integration' );
+		}
+	}
+
 	public function payment_fields() {
 		?>
+		<script>if(window.plMountPaymentMethodForm) window.plMountPaymentMethodForm()</script>
 		<div id="payload-add-payment-method"></div>
 		<?php
 	}
@@ -82,10 +106,28 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			);
 		}
 
-		// Process payment using Token
-		if ( $_POST['token'] ) {
-			$token   = WC_Payment_Tokens::get( $_POST['token'] );
-			$payment = $this->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
+		// Process payment using token
+		if ( $_POST['token'] || $_POST['payment_method_id'] ) {
+			if ( $_POST['token'] ) {
+				$token = WC_Payment_Tokens::get( $_POST['token'] );
+			} else {
+				$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
+				$token          = $this->create_token( $payment_method->data() );
+
+				// Create and set token if subscription
+				if ( WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
+					$order->add_payment_token( $token );
+				}
+			}
+
+			try {
+				$payment = $this->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
+			} catch ( TransactionDeclined $e ) {
+				wc_add_notice( __( 'Payment error:', 'woothemes' ) . $e->error_description, 'error' );
+				return array(
+					'result' => 'failure',
+				);
+			}
 		}
 
 		// Confirm payment processed on client side
@@ -106,12 +148,12 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$payment->update( array( 'status' => 'processed' ) );
 
 			$order->set_transaction_id( $payment->ref_number );
-		}
 
-		// Create and set token if subscription
-		if ( WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
-			$token = $this->create_token( $payment->payment_method );
-			$order->add_payment_token( $token );
+			// Create and set token if subscription
+			if ( WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
+				$token = $this->create_token( $payment->payment_method );
+				$order->add_payment_token( $token );
+			}
 		}
 
 		// Mark the order as processed

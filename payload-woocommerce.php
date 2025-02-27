@@ -67,7 +67,7 @@ function payload_register_order_approval_payment_method_type() {
 }
 
 function get_intent( $data ) {
-  setup_payload_api();
+	setup_payload_api();
 
 	$clientToken = Payload\ClientToken::create(
 		array(
@@ -98,5 +98,7 @@ function setup_payload_api() {
 	$settings = get_option( 'woocommerce_payload_settings', array() );
 
 	pl::$api_key = $settings['api_key'];
-	pl::$api_url = 'http://api.payload-dev.com:8000/';
+	if ( getenv( 'PAYLOAD_API_URL' ) ) {
+		pl::$api_url = getenv( 'PAYLOAD_API_URL' );
+	}
 }
