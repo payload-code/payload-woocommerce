@@ -167,6 +167,23 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		);
 	}
 
+	public function add_payment_method() {
+		setup_payload_api();
+
+		if ( ! $_POST['payment_method_id'] ) {
+			throw new Exception( 'Missing payment method details' );
+		}
+
+		$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
+
+		$token = $this->create_token( $payment_method->data() );
+
+		return array(
+			'result'   => 'success',
+			'redirect' => wc_get_endpoint_url( 'payment-methods' ),
+		);
+	}
+
 	public function scheduled_subscription_payment( $amount, $renewal_order, $retry = true, $previous_error = false ) {
 		setup_payload_api();
 

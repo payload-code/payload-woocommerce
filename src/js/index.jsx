@@ -58,7 +58,7 @@ const Content = (props) => {
   const hasSubscription = !!props.cartData.extensions?.subscriptions?.length;
 
   useEffect(() => {
-    wp.apiFetch({ path: "wc/v3/custom" }).then((data) =>
+    wp.apiFetch({ path: "wc/v3/payload_client_token" }).then((data) =>
       setClientToken(data.client_token)
     );
 
@@ -122,13 +122,20 @@ const AddPaymentMethod = () => {
   const [generalErrorMessage, setGeneralErrorMessage] = useState();
   const addPaymentPaymentFormRef = useRef(null);
 
+  const getForm = () => {
+    return (
+      document.getElementById("order_review") ??
+      document.getElementById("add_payment_method")
+    );
+  };
+
   useEffect(() => {
-    wp.apiFetch({ path: "wc/v3/custom" }).then((data) =>
+    wp.apiFetch({ path: "wc/v3/payload_client_token" }).then((data) =>
       setClientToken(data.client_token)
     );
 
-    const orderReview = document.getElementById("order_review");
-    const placeOrder = document.getElementById("place_order");
+    const form = getForm();
+    const submitBtn = document.getElementById("place_order");
 
     const preventDefault = (evt) => {
       evt.preventDefault();
@@ -151,20 +158,20 @@ const AddPaymentMethod = () => {
     };
 
     const removeListeners = () => {
-      orderReview.removeEventListener("submit", preventDefault);
-      placeOrder.removeEventListener("click", submitPayloadForm);
+      form.removeEventListener("submit", preventDefault);
+      submitBtn.removeEventListener("click", submitPayloadForm);
     };
 
-    orderReview.addEventListener("submit", preventDefault);
-    placeOrder.addEventListener("click", submitPayloadForm);
+    form.addEventListener("submit", preventDefault);
+    submitBtn.addEventListener("click", submitPayloadForm);
 
     return removeListeners;
   }, []);
 
   useEffect(() => {
     if (paymentMethodId) {
-      const placeOrder = document.getElementById("place_order");
-      placeOrder.click();
+      const submitBtn = document.getElementById("place_order");
+      submitBtn.click();
     }
   }, [paymentMethodId]);
 

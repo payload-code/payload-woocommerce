@@ -85,7 +85,7 @@ add_action(
 	function () {
 		register_rest_route(
 			'wc/v3',
-			'custom',
+			'payload_client_token',
 			array(
 				'methods'  => 'GET',
 				'callback' => 'get_intent',
