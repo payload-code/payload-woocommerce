@@ -50,6 +50,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	}
 
 	public function payment_scripts() {
+		if ( is_admin() ) {
+			return;
+		}
+
 		wp_enqueue_style( 'payload-blocks-css', plugin_dir_url( __FILE__ ) . '../build/style-main.css', array(), '' );
 
 		wp_enqueue_script(

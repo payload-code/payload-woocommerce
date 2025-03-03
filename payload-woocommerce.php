@@ -35,7 +35,7 @@ function add_payload_gateway( $gateways ) {
 
 /**
  * Custom function to declare compatibility with cart_checkout_blocks feature
-*/
+ */
 add_action( 'before_woocommerce_init', 'declare_cart_checkout_blocks_compatibility' );
 function declare_cart_checkout_blocks_compatibility() {
 	// Check if the required class exists
