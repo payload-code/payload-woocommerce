@@ -36,6 +36,14 @@ https://support.payload.com
 
 == Changelog ==
 
+= v1.1.0 =
+
+* Add customer object support
+* Fix changing payment method for Subscriptions
+* Update subscription details to show payment method title
+
+[See full changelog](https://raw.githubusercontent.com/payload-code/payload-woocommerce/refs/heads/main/changelog.txt).
+
 = v1.0.0 =
 
 * Initial release

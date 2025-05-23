@@ -60,7 +60,6 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			'payload-blocks-integration',
 			plugin_dir_url( __FILE__ ) . '../build/main.js',
 			array(
-
 				'wc-blocks-registry',
 				'wc-settings',
 				'wp-element',
@@ -100,9 +99,17 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$token = $this->create_token( $payment_method->data() );
 
 			$parent_order = wc_get_order( $order->get_parent_id() );
-			$parent_order->add_payment_token( $token->get_id() );
-			// $parent_order->set_payment_method_title($payment_method->description);
-			$parent_order->save();
+
+			$this->update_subscription_order_payment_method( $parent_order, $token, $payment_method );
+
+			if ( $_POST['update_all_subscriptions_payment_method'] == '1' ) {
+				// Update all subscriptions to the new payment method if selected
+				$subscriptions = wcs_get_users_subscriptions( get_current_user_id() );
+				foreach ( $subscriptions as $subscription ) {
+					$subscription_parent_order = wc_get_order( $subscription->get_parent_id() );
+					$this->update_subscription_order_payment_method( $subscription_parent_order, $token, $payment_method );
+				}
+			}
 
 			return array(
 				'result'   => 'success',
@@ -119,8 +126,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				$token          = $this->create_token( $payment_method->data() );
 
 				// Create and set token if subscription
-				if ( WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
-					$order->add_payment_token( $token );
+				if ( wcs_order_contains_subscription( $order_id ) ) {
+					$this->update_subscription_order_payment_method( $order, $token, $payment_method );
 				}
 			}
 
@@ -188,6 +195,12 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		);
 	}
 
+	public function update_subscription_order_payment_method( $order, $token, $payment_method ) {
+		$order->set_payment_method( $token->get_id() );
+		$order->set_payment_method_title( $payment_method->description );
+		$order->save();
+	}
+
 	public function scheduled_subscription_payment( $amount, $renewal_order, $retry = true, $previous_error = false ) {
 		setup_payload_api();
 
@@ -201,16 +214,23 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$payment_method_id = null;
 		foreach ( $subscriptions as $subscription_id => $subscription ) {
 			$parent_order = wc_get_order( $subscription->get_parent_id() );
-			$tokens       = $parent_order->get_payment_tokens();
+			$token_id     = $parent_order->get_payment_method();
 
-			if ( count( $tokens ) == 0 ) {
-				throw new Exception( 'No available payment method' );
-			}
-
-			$token = WC_Payment_Tokens::get( $tokens[0] );
+			$token = WC_Payment_Tokens::get( $token_id );
 
 			if ( is_null( $token ) ) {
-				throw new Exception( 'No available payment method' );
+				// Legacy support from version <=1.0.0
+				$tokens = $parent_order->get_payment_tokens();
+
+				if ( count( $tokens ) == 0 ) {
+					throw new Exception( 'No available payment method' );
+				}
+
+				$token = WC_Payment_Tokens::get( $tokens[0] );
+
+				if ( is_null( $token ) ) {
+					throw new Exception( 'No available payment method' );
+				}
 			}
 
 			$payment_method_id = $token->get_token();
@@ -218,6 +238,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
 
 		$this->create_payment_for_order( $renewal_order, $amount, $payment_method_id );
+
+		$renewal_order->set_payment_method( $token->get_id() );
+		$renewal_order->set_payment_method_title( $payment_method->description );
 
 		$renewal_order->save();
 	}

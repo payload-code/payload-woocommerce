@@ -1,5 +1,11 @@
 == Changelog ==
 
+= v1.1.0 =
+
+* Payload customer object support for subscribers
+* Fix changing payment method for Subscriptions
+* Update subscription details to show payment method title
+
 = v1.0.0 =
 
 * Initial release

@@ -141,9 +141,9 @@ const AddPaymentMethod = () => {
 	};
 
 	useEffect( () => {
-		wp.apiFetch( { path: 'wc/v3/payload_client_token' } ).then( ( data ) =>
-			setClientToken( data.client_token )
-		);
+		wp.apiFetch( {
+			path: 'wc/v3/payload_client_token?type=payment_method',
+		} ).then( ( data ) => setClientToken( data.client_token ) );
 
 		const form = getForm();
 		const submitBtn = document.getElementById( 'place_order' );
