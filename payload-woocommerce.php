@@ -69,12 +69,47 @@ function payload_register_order_approval_payment_method_type() {
 function get_intent( $data ) {
 	setup_payload_api();
 
-	$clientToken = Payload\ClientToken::create(
-		array(
-			'intent' => array(
-				'payment_form' => (object) array(),
+	$payload_customer_id = null;
+
+	$user = wp_get_current_user();
+	if ( $user ) {
+		$payload_customer_id = get_user_meta( $user->get_id(), 'payload_customer_id' );
+
+		if ( ! $payload_customer_id ) {
+			$customer = Payload\Customer::create(
+				array(
+					'email' => $user->user_email,
+					'name'  => $user->user_nicename,
+				)
+			);
+
+			$payload_customer_id = $customer->id;
+
+			update_user_meta( $user->get_id(), 'payload_customer_id', $payload_customer_id );
+
+		}
+	}
+
+	if ( $_GET['type'] == 'payment_method' ) {
+		$intent = array(
+			'payment_method_form' => array(
+				'payment_method' => array(
+					'customer_id' => $payload_customer_id,
+				),
 			),
-		)
+		);
+	} else {
+		$intent = array(
+			'payment_form' => array(
+				'payment' => array(
+					'customer_id' => $payload_customer_id,
+				),
+			),
+		);
+	}
+
+	$clientToken = Payload\ClientToken::create(
+		array( 'intent' => $intent ),
 	);
 
 	return array( 'client_token' => $clientToken->id );
@@ -101,4 +136,11 @@ function setup_payload_api() {
 	if ( getenv( 'PAYLOAD_API_URL' ) ) {
 		pl::$api_url = getenv( 'PAYLOAD_API_URL' );
 	}
+}
+
+add_filter( 'woocommerce_subscription_payment_method_to_display', 'payload_subscription_payment_method_to_display', 10, 3 );
+
+function payload_subscription_payment_method_to_display( $label, $subscription, $context ) {
+	$parent_order = wc_get_order( $subscription->get_parent_id() );
+	return $parent_order->get_payment_method_title();
 }
