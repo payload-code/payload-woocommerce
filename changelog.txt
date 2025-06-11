@@ -1,5 +1,9 @@
 == Changelog ==
 
+= v1.2.0 =
+
+* Fix for guest checkout
+
 = v1.1.0 =
 
 * Payload customer object support for subscribers

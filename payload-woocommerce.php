@@ -3,7 +3,7 @@
  * Plugin Name: Payload WooCommerce
  * Plugin URI: https://github.com/payload-code/payload-woocommerce
  * Description: Accept WooCommerce payments through Payload.com.
- * Version: 1.0.0
+ * Version: 1.2.0
  * Author: Payload
  * Author URI: https://payload.com
  * Requires Plugins: woocommerce
@@ -66,16 +66,13 @@ function payload_register_order_approval_payment_method_type() {
 	);
 }
 
-function get_intent( $data ) {
-	setup_payload_api();
-
-	$payload_customer_id = null;
+function get_payload_customer_id() {
 
 	$user = wp_get_current_user();
 	if ( $user ) {
 		$payload_customer_id = get_user_meta( $user->get_id(), 'payload_customer_id' );
 
-		if ( ! $payload_customer_id ) {
+		if ( ! $payload_customer_id && $user->user_email && $user->user_nicename ) {
 			$customer = Payload\Customer::create(
 				array(
 					'email' => $user->user_email,
@@ -89,6 +86,14 @@ function get_intent( $data ) {
 
 		}
 	}
+
+	return $payload_customer_id ?: null;
+}
+
+function get_intent( $data ) {
+	setup_payload_api();
+
+	$payload_customer_id = get_payload_customer_id();
 
 	if ( $_GET['type'] == 'payment_method' ) {
 		$intent = array(

@@ -158,6 +158,15 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 			$payment->update( array( 'status' => 'processed' ) );
 
+			if ( ! $payment->customer_id ) {
+				$payload_customer_id = get_payload_customer_id();
+				if ( $payload_customer_id ) {
+					$payment->update( array( 'customer_id' => $payload_customer_id ) );
+					$payment_method = Payload\PaymentMethod::get( $payment->payment_method_id );
+					$payment_method->update( array( 'account_id' => $payload_customer_id ) );
+				}
+			}
+
 			$order->set_transaction_id( $payment->ref_number );
 
 			// Create and set token if subscription
