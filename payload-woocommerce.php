@@ -70,20 +70,22 @@ function get_payload_customer_id() {
 
 	$user = wp_get_current_user();
 	if ( $user ) {
-		$payload_customer_id = get_user_meta( $user->get_id(), 'payload_customer_id' );
+		$payload_customer_id = get_user_meta( $user->ID, 'payload_customer_id', true );
 
 		if ( ! $payload_customer_id && $user->user_email && $user->user_nicename ) {
 			$customer = Payload\Customer::create(
 				array(
 					'email' => $user->user_email,
 					'name'  => $user->user_nicename,
+					'attrs' => array(
+						'_wp_user_id' => $user->ID,
+					),
 				)
 			);
 
-			$payload_customer_id = $customer->id;
+				$payload_customer_id = $customer->id;
 
-			update_user_meta( $user->get_id(), 'payload_customer_id', $payload_customer_id );
-
+				update_user_meta( $user->ID, 'payload_customer_id', $payload_customer_id );
 		}
 	}
 

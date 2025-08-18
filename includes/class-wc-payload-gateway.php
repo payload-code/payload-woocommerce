@@ -66,7 +66,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				'wp-html-entities',
 				'wp-i18n',
 			),
-			''
+			'',
+			true
 		);
 
 		if ( function_exists( 'wp_set_script_translations' ) ) {
@@ -257,6 +258,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	public function create_payment_for_order( $order, $amount, $payment_method_id ) {
 		$payment = Payload\Transaction::create(
 			array(
+				'description'       => 'Payment for order #' . $order->get_id(),
 				'amount'            => $amount,
 				'type'              => 'payment',
 				'payment_method_id' => $payment_method_id,
@@ -280,6 +282,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$token->set_expiry_year( substr( $payment_method['card']['expiry'], -4 ) );
 		$token->set_user_id( get_current_user_id() );
 		$token->save();
+
+		$pm = new Payload\PaymentMethod( array( 'id' => $payment_method['id'] ) );
+		$pm->update( array( 'attrs' => array( '_wp_token_id' => $token->get_id() ) ) );
 
 		return $token;
 	}
