@@ -67,6 +67,7 @@ function payload_register_order_approval_payment_method_type() {
 }
 
 function get_payload_customer_id() {
+	$payload_customer_id = null;
 
 	$user = wp_get_current_user();
 	if ( $user ) {
