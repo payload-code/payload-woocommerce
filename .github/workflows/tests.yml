@@ -57,8 +57,7 @@ jobs:
         run: npm ci
 
       - name: Run JavaScript linting
-        run: npm run lint:js
+        run: npm run lint:js -- src/js/
 
       - name: Run CSS linting
         run: npm run lint:css -- src/css/
-
