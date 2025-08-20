@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         processIsolation="false"
+         stopOnFailure="false">
+
+    <testsuites>
+        <testsuite name="Payload WooCommerce Plugin Test Suite">
+            <file>./tests/test-wc-payload-gateway.php</file>
+            <file>./tests/test-wc-payload-blocks.php</file>
+            <file>./tests/test-utility-functions.php</file>
+        </testsuite>
+    </testsuites>
+
+    <coverage>
+        <include>
+            <directory>./includes/</directory>
+            <file>./payload-woocommerce.php</file>
+        </include>
+        <exclude>
+            <directory>./vendor/</directory>
+            <directory>./node_modules/</directory>
+            <directory>./tests/</directory>
+        </exclude>
+    </coverage>
+
+    <php>
+        <const name="WP_TESTS_PHPUNIT_POLYFILLS_PATH" value="./vendor/yoast/phpunit-polyfills"/>
+    </php>
+</phpunit>

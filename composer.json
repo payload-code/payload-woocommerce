@@ -9,6 +9,14 @@
     },
     "require-dev": {
         "wp-coding-standards/wpcs": "^3.0",
-        "squizlabs/php_codesniffer": "*"
+        "squizlabs/php_codesniffer": "*",
+        "phpunit/phpunit": "^9.6",
+        "yoast/phpunit-polyfills": "^4.0",
+        "mockery/mockery": "^1.6",
+        "brain/monkey": "^2.6"
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage/"
     }
 }

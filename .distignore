@@ -1,0 +1,42 @@
+# Development files
+.git
+.github
+node_modules
+tests
+bin
+coverage
+.phpunit.result.cache
+phpunit.xml
+patchwork.json
+jest.config.js
+
+# Build tools
+webpack.config.js
+package.json
+package-lock.json
+composer.json
+composer.lock
+composer.phar
+
+# Documentation and config
+README.md
+.gitignore
+.distignore
+.editorconfig
+.eslintrc.js
+
+# Temp files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Source files (keeping built files only)
+src
+
+# Database and output files
+db_data
+wp_data
+output
+output.zip
+*.zip

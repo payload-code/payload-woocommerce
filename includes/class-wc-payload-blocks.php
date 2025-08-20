@@ -25,7 +25,7 @@ final class WC_Payload_Blocks extends AbstractPaymentMethodType {
 	public function get_payment_method_data() {
 		return array(
 			'title'       => $this->gateway->title,
-			'description' => $this->gateway->description,
+			'description' => $this->gateway->method_description,
 		);
 	}
 }
