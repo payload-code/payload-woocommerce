@@ -7,6 +7,7 @@
 * Added a description when initiating a payload transaction
 * Added reference ID metadata to customers and payment methods
 * Fixed script loading to ensure loading in the body versus head
+* Added unit test suite
 
 = v1.2.0 =
 
