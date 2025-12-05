@@ -28,7 +28,7 @@ add_filter( 'woocommerce_checkout_fields', function( $fields ) {
     // Re-add/force it
     $fields['billing']['billing_company'] = array(
         'type'        => 'text',
-        'label'       => 'Company Name (Forced)',
+        'label'       => 'Company Name ',
         'required'    => true,
         'class'       => array( 'form-row-wide' ),
         'autocomplete'=> 'organization',
