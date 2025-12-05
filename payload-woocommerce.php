@@ -16,7 +16,56 @@
 require_once 'vendor/autoload.php';
 use Payload\API as pl;
 
+add_filter( 'woocommerce_checkout_fields', function( $fields ) {
+    error_log( 'DEBUG: woocommerce_checkout_fields fired; inspecting billing_company.' );
 
+    if ( isset( $fields['billing']['billing_company'] ) ) {
+        error_log( 'DEBUG: billing_company exists BEFORE: ' . print_r( $fields['billing']['billing_company'], true ) );
+    } else {
+        error_log( 'DEBUG: billing_company missing BEFORE, re-adding it.' );
+    }
+
+    // Re-add/force it
+    $fields['billing']['billing_company'] = array(
+        'type'        => 'text',
+        'label'       => 'Company Name (Forced)',
+        'required'    => true,
+        'class'       => array( 'form-row-wide' ),
+        'autocomplete'=> 'organization',
+        'priority'    => 12,
+    );
+
+    error_log( 'DEBUG: billing_company AFTER: ' . print_r( $fields['billing']['billing_company'], true ) );
+
+    return $fields;
+}, 999 );
+
+
+add_action( 'profile_update', function( $user_id, $old_user ) {
+    setup_payload_api();
+    $user = get_userdata( $user_id );
+     
+    $payload_customer_id = get_user_meta( $user_id, 'payload_customer_id', true );
+
+
+        if( !empty($payload_customer_id)){
+            $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
+                array(
+                    'email' => $user->user_email,
+                    'name'  => $user->user_nicename,
+                    'attrs' => array(
+                        '_wp_user_id' => $user_id,
+                        'Company Name'=>get_user_meta( $user_id, 'billing_company', true
+                    )
+                )
+                )
+                    );
+           
+         
+        }
+    
+
+}, 10, 2 );
 
 
 add_action( 'plugins_loaded', 'woocommerce_payload', 0 );
@@ -123,6 +172,7 @@ function get_payload_customer_id() {
 								'name'  => $user->user_nicename,
 								'attrs' => array(
 									'_wp_user_id' => $user->ID,
+									'Company Name'=>get_user_meta( $user->ID, 'billing_company', true ),
 								),
 							)
 						);
