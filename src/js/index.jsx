@@ -249,7 +249,7 @@ const mountPaymentMethodForm = () => {
 		const domContainer = document.querySelector(
 			'#payload-add-payment-method'
 		);
-	
+
 		const root = ReactDOM.createRoot( domContainer );
 		root.render( <AddPaymentMethod /> );
 	}
@@ -296,16 +296,13 @@ window.plMountPaymentMethodForm = ( () => {
 		const container = document.querySelector( TARGET_SELECTOR );
 
 		// If we have a container or had previously found it (pending), mount now.
-		if ( container || (pending && container) ) {
-			actuallyMount(
-				container 
-			);
+		if ( container || ( pending && container ) ) {
+			actuallyMount( container );
 			cleanup();
 		}
 	};
 
 	const handleFound = ( container ) => {
-	
 		if ( ! container ) {
 			return;
 		}

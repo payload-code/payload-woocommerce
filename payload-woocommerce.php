@@ -15,31 +15,41 @@
 
 require_once 'vendor/autoload.php';
 use Payload\API as pl;
+// Force a Company field to show on the billing section
+add_action( 'woocommerce_after_checkout_billing_form', function( $checkout ) {
 
-add_filter( 'woocommerce_checkout_fields', function( $fields ) {
-    error_log( 'DEBUG: woocommerce_checkout_fields fired; inspecting billing_company.' );
+    echo '<div class="form-row form-row-wide" id="billing_company_custom_wrapper">';
 
-    if ( isset( $fields['billing']['billing_company'] ) ) {
-        error_log( 'DEBUG: billing_company exists BEFORE: ' . print_r( $fields['billing']['billing_company'], true ) );
-    } else {
-        error_log( 'DEBUG: billing_company missing BEFORE, re-adding it.' );
-    }
-
-    // Re-add/force it
-    $fields['billing']['billing_company'] = array(
-        'type'        => 'text',
-        'label'       => 'Company Name ',
-        'required'    => true,
-        'class'       => array( 'form-row-wide' ),
-        'autocomplete'=> 'organization',
-        'priority'    => 12,
+    woocommerce_form_field(
+        'billing_company',
+        [
+            'type'        => 'text',
+            'class'       => [ 'form-row-wide' ],
+            'label'       => __( 'Company Name', 'woocommerce' ),
+            'required'    => false,
+            'priority'    => 8,
+        ],
+        $checkout->get_value( 'billing_company' )
     );
 
-    error_log( 'DEBUG: billing_company AFTER: ' . print_r( $fields['billing']['billing_company'], true ) );
+    echo '</div>';
+}, 10, 2 );
+// Save billing_company to the order and user meta
+add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
 
-    return $fields;
-}, 999 );
+    if ( ! empty( $_POST['billing_company'] ) ) {
+        $company = sanitize_text_field( $_POST['billing_company'] );
 
+        // Set on the order
+        $order->set_billing_company( $company );
+
+        // Also persist on the user, if logged in
+        if ( $order->get_customer_id() ) {
+            update_user_meta( $order->get_customer_id(), 'billing_company', $company );
+        }
+    }
+
+}, 10, 2 );
 
 add_action( 'profile_update', function( $user_id, $old_user ) {
     setup_payload_api();
