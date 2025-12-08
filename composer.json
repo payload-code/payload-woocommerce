@@ -17,6 +17,8 @@
     },
     "scripts": {
         "test": "phpunit",
-        "test:coverage": "phpunit --coverage-html coverage/"
+        "test:coverage": "phpunit --coverage-html coverage/",
+        "phpcs": "phpcs --standard=WordPress .",
+        "phpcbf": "phpcbf --standard=WordPress ."
     }
 }
