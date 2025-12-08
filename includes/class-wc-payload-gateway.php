@@ -185,12 +185,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
 
 	
-		if($payment->status  == 'authorized' ){
-			$payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> 'Payment for order #' . $order_id." related to  Product: ".$this->get_order_product_name($order_id) ) );
-	
-				$order->payment_complete();
-				$order->save();
-		}	
+			$payment = $this->handle_order_payment( $order, $payment );
 
 
 		// Redirect to the thank you page
@@ -286,8 +281,13 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 	public function handle_order_payment( $order, $payment ) {
     $order->set_transaction_id( $payment->ref_number );
+    $order_id =  $order->get_id();
     if($payment->status  == 'authorized' ){
         $payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
+        $get_user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
+        if(!empty($get_user_company)){
+            $payment->update( array('attrs' => array( 'Company Name' => $get_user_company ) ) );
+        }
     }
     if ($payment->status  == 'processed' && $this->is_virtual($order_id)){
 			$order->payment_complete();
@@ -330,6 +330,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	public function is_virtual($order_id){
 		
 		$order = wc_get_order( $order_id );
+		if(empty($order)){
+			return false;
+		}
 		$items = $order->get_items();
 
 		foreach ( $items as $item ) {
@@ -383,16 +386,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			if ( $payload_customer_id ) {
 				$order->update_meta_data( 'payload_customer_id', $payload_customer_id );
 				$order->save();
-
-				// Ensure the newly provided payment method is associated with that customer in Payload
-				if ( isset( $payment_method ) && $payment_method && empty( $payment_method->account_id ) ) {
-					try {
-						$payment_method->update( array( 'account_id' => $payload_customer_id ) );
-					} catch ( Exception $e ) {
-						// ignore update errors
-					}
 				}
-			}
+			
 			return $order->get_user_id();
 	}
 

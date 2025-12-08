@@ -61,3 +61,9 @@ jobs:
 
       - name: Run CSS linting
         run: npm run lint:css -- src/css/
+      
+      - name: Run MD:DOCS linting
+        run: npm run lint:md::docs
+
+      - name: Run pkg-json linting
+        run: npm run lint:pkg-json

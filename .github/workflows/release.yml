@@ -55,10 +55,10 @@ jobs:
           mkdir -p "$OUTDIR"
           ZIPFILE="$OUTDIR/${TAG}.zip"
 
-          # Zip the full project (including vendor, node_modules, build, etc.)
+          # Zip the full project (including vendor, build, etc.)
           # Exclude git metadata, GitHub workflows, and the release folder itself
           zip -r "$ZIPFILE" . \
-            -x ".git/*" ".github/*" "release/*"
+            -x ".git/*" ".github/*" "release/*" "node_modules/*" 
 
           echo "zip_path=$ZIPFILE" >> $GITHUB_OUTPUT
 

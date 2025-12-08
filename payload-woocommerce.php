@@ -15,8 +15,67 @@
 
 require_once 'vendor/autoload.php';
 use Payload\API as pl;
+// Force a Company field to show on the billing section
+add_action( 'woocommerce_after_checkout_billing_form', function( $checkout ) {
+
+    echo '<div class="form-row form-row-wide" id="billing_company_custom_wrapper">';
+
+    woocommerce_form_field(
+        'billing_company',
+        [
+            'type'        => 'text',
+            'class'       => [ 'form-row-wide' ],
+            'label'       => __( 'Company Name', 'woocommerce' ),
+            'required'    => false,
+            'priority'    => 8,
+        ],
+        $checkout->get_value( 'billing_company' )
+    );
+
+    echo '</div>';
+}, 10, 2 );
+// Save billing_company to the order and user meta
+add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
+
+    if ( ! empty( $_POST['billing_company'] ) ) {
+        $company = sanitize_text_field( $_POST['billing_company'] );
+
+        // Set on the order
+        $order->set_billing_company( $company );
+
+        // Also persist on the user, if logged in
+        if ( $order->get_customer_id() ) {
+            update_user_meta( $order->get_customer_id(), 'billing_company', $company );
+        }
+    }
+
+}, 10, 2 );
+
+add_action( 'profile_update', function( $user_id, $old_user ) {
+    setup_payload_api();
+    $user = get_userdata( $user_id );
+     
+    $payload_customer_id = get_user_meta( $user_id, 'payload_customer_id', true );
 
 
+        if( !empty($payload_customer_id)){
+            $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
+                array(
+                    'email' => $user->user_email,
+                    'name'  => $user->user_nicename,
+                    'attrs' => array(
+                        '_wp_user_id' => $user_id,
+                        'Company Name'=>get_user_meta( $user_id, 'billing_company', true
+                    )
+                )
+                )
+                    );
+           
+         
+        }
+    
+
+}, 10, 2 );
 
 
 add_action( 'plugins_loaded', 'woocommerce_payload', 0 );
@@ -123,6 +182,7 @@ function get_payload_customer_id() {
 								'name'  => $user->user_nicename,
 								'attrs' => array(
 									'_wp_user_id' => $user->ID,
+									'Company Name'=>get_user_meta( $user->ID, 'billing_company', true ),
 								),
 							)
 						);
