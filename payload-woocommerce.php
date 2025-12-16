@@ -150,6 +150,45 @@ add_action( 'woocommerce_payment_complete', function( $order_id ) {
 
 });
 
+/**
+ * Plugin Name: Admin Flash Notice Example
+ */
+
+add_action('admin_init', function () {
+	// Example trigger: append ?my_notice=1 to any wp-admin URL
+	if (!current_user_can('manage_options')) return;
+
+	if (isset($_GET['my_notice']) && $_GET['my_notice'] === '1') {
+		set_transient('my_admin_flash_notice_' . get_current_user_id(), [
+			'message' => '✅ Settings saved successfully.',
+			'type'    => 'success', // success | warning | error | info
+		], 60); // seconds
+	}
+});
+
+add_action('admin_notices', function () {
+	if (!current_user_can('manage_options')) return;
+
+	$key  = 'my_admin_flash_notice_' . get_current_user_id();
+	$data = get_transient($key);
+
+	if (!$data) return;
+
+	delete_transient($key);
+
+	$type    = isset($data['type']) ? $data['type'] : 'info';
+	$message = isset($data['message']) ? $data['message'] : '';
+
+	$allowed = ['success', 'warning', 'error', 'info'];
+	if (!in_array($type, $allowed, true)) $type = 'info';
+
+	printf(
+		'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+		esc_attr($type),
+		esc_html($message)
+	);
+});
+
 function get_payload_customer_id() {
 	$payload_customer_id = null;
 
@@ -260,4 +299,114 @@ function payload_subscription_payment_method_to_display( $label, $subscription, 
 	return $parent_order->get_payment_method_title();
 	}
 	return "No Payment Method available at this time.";
+}
+
+add_action( 'woocommerce_new_payment_token', 'payload_retry_orders_after_card_update', 10, 2 );
+add_action( 'woocommerce_payment_token_set_default', 'payload_retry_orders_after_card_update', 10, 2 );
+
+function payload_retry_orders_after_card_update( $token_id, $token = null ) {
+	if ( payload_card_update_retry_suppressed() ) {
+		return;
+	}
+
+	if ( ! $token instanceof WC_Payment_Token ) {
+		$token = WC_Payment_Tokens::get( $token_id );
+	}
+
+	if ( ! $token instanceof WC_Payment_Token ) {
+		return;
+	}
+
+	if ( 'payload' !== $token->get_gateway_id() ) {
+		return;
+	}
+
+	$user_id = $token->get_user_id();
+	if ( ! $user_id ) {
+		return;
+	}
+
+	setup_payload_api();
+
+	$args   = array(
+		'customer_id'    => $user_id,
+		'status'         => array( 'wc-on-hold', 'wc-pending' ),
+		'payment_method' => 'payload',
+		'type'           => array( 'shop_order', 'shop_subscription' ),
+		'limit'          => -1,
+		'orderby'        => 'date',
+		'order'          => 'ASC',
+	);
+	$orders = wc_get_orders( $args );
+
+	if ( empty( $orders ) ) {
+		return;
+	}
+
+	$gateway = payload_get_gateway_instance();
+
+	if ( ! $gateway ) {
+		return;
+	}
+
+	foreach ( $orders as $order ) {
+		if ( ! $order instanceof WC_Order ) {
+			continue;
+		}
+
+		if ( strval( $order->get_payment_method() ) !== strval( $token->get_id() ) ) {
+			$order->set_payment_method( $token->get_id() );
+
+			if ( method_exists( $token, 'get_card_type' ) && method_exists( $token, 'get_last4' ) && $token->get_last4() ) {
+				$method_title = sprintf(
+					__( '%1$s ending in %2$s', 'payload' ),
+					strtoupper( $token->get_card_type() ),
+					$token->get_last4()
+				);
+				$order->set_payment_method_title( $method_title );
+			}
+
+			$order->save();
+		}
+
+		try {
+			$gateway->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
+			$order->add_order_note( __( 'Automatically retried payment after customer updated saved card.', 'payload' ) );
+		} catch ( Exception $e ) {
+			$order->add_order_note(
+				sprintf(
+					__( 'Automatic retry after card update failed: %s', 'payload' ),
+					$e->getMessage()
+				)
+			);
+		}
+	}
+}
+
+function payload_get_gateway_instance() {
+	if ( function_exists( 'WC' ) ) {
+		$payment_gateways = WC()->payment_gateways();
+		if ( $payment_gateways ) {
+			$gateways = $payment_gateways->payment_gateways();
+			if ( isset( $gateways['payload'] ) && $gateways['payload'] instanceof WC_Payload_Gateway ) {
+				return $gateways['payload'];
+			}
+		}
+	}
+
+	if ( class_exists( 'WC_Payload_Gateway' ) ) {
+		return new WC_Payload_Gateway();
+	}
+
+	return null;
+}
+
+function payload_card_update_retry_suppressed( $status = null ) {
+	static $suppressed = false;
+
+	if ( null !== $status ) {
+		$suppressed = (bool) $status;
+	}
+
+	return $suppressed;
 }
