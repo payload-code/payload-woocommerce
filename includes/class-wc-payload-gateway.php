@@ -504,8 +504,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 						if ( $parent_pm_id ) {
 							try {
 								$parent_payment_method = Payload\PaymentMethod::get( $parent_pm_id );
-								if ( ! empty( $parent_payment_method->account_id ) ) {
-									$payload_customer_id = $parent_payment_method->account_id;
+                                if ( ! empty( $parent_payment_method->customer_id ) ) {
+									$payload_customer_id = $parent_payment_method->customer_id;
 								}else{
                                     $payload_customer_id = get_payload_customer_id();
                                 }
