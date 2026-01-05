@@ -327,9 +327,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
     $order_id =  $order->get_id();
     if($payment->status  == 'authorized' ){
         $payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
-        $get_user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
-        if(!empty($get_user_company)){
-            $payment->update( array('attrs' => array( 'Company Name' => $get_user_company ) ) );
+        $user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
+        if(!empty($user_company)){
+            $payment->update( array('attrs' => array( 'Company Name' => $user_company ) ) );
         }
     }
     if ($payment->status  == 'processed' && $this->is_virtual($order_id)){
