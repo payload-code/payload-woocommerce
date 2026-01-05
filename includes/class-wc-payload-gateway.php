@@ -296,7 +296,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$payment_method_id = $token->get_token();
 			break;
 		}
-
+        $payment_method = Payload\PaymentMethod::get( $payment_method_id);
 		$this->create_payment_for_order( $renewal_order, $amount, $payment_method_id );
 
 		$renewal_order->set_payment_method( $token->get_id() );
