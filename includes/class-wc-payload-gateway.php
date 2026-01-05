@@ -92,7 +92,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 			$order = wc_get_order( $order_id );
 
-			$get_user_id_from_order = $this->get_order_customer_id($order);	
+			$user_id_from_order = $this->get_order_customer_id($order);	
 
 			// Update subscription payment method if wc subscription exists
 			if (function_exists('wcs_is_subscription') && wcs_is_subscription( $order_id ) ) {
@@ -103,8 +103,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				
 
 				$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
-
-				$token = $this->create_token( $payment_method->data() , $get_user_id_from_order  );
+				$token = $this->create_token( $payment_method->data() , $user_id_from_order  );
 
 				$parent_order = wc_get_order( $order->get_parent_id() );
 
@@ -112,7 +111,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			
 				if ( $_POST['update_all_subscriptions_payment_method'] == '1' ) {
 					// Update all subscriptions to the new payment method if selected
-					$subscriptions = wcs_get_users_subscriptions( $get_user_id_from_order );
+					$subscriptions = wcs_get_users_subscriptions( $user_id_from_order );
 					foreach ( $subscriptions as $subscription ) {
 						$subscription_parent_order = wc_get_order( $subscription->get_parent_id() );
 						$this->update_subscription_order_payment_method( $subscription_parent_order, $token, $payment_method );
@@ -131,7 +130,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 					$token = WC_Payment_Tokens::get( $_POST['token'] );
 				} else {
 					$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
-					$token          = $this->create_token( $payment_method->data()  , $get_user_id_from_order);
+					$token          = $this->create_token( $payment_method->data()  , $user_id_from_order);
 
 					// Create and set token if subscription
 					if ( wcs_order_contains_subscription( $order_id ) ) {
