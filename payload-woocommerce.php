@@ -65,7 +65,7 @@ add_action( 'profile_update', function( $user_id, $old_user ) {
                     'name'  => $user->display_name,
                     'attrs' => array(
                         '_wp_user_id' => $user_id,
-                        'Company Name'=>get_user_meta( $user_id, 'billing_company', true
+                        'billing_company' => get_user_meta( $user_id, 'billing_company', true
                     )
                 )
                 )
@@ -305,9 +305,7 @@ add_action( 'woocommerce_new_payment_token', 'payload_retry_orders_after_card_up
 add_action( 'woocommerce_payment_token_set_default', 'payload_retry_orders_after_card_update', 10, 2 );
 
 function payload_retry_orders_after_card_update( $token_id, $token = null ) {
-	if ( payload_card_update_retry_suppressed() ) {
-		return;
-	}
+
 
 	if ( ! $token instanceof WC_Payment_Token ) {
 		$token = WC_Payment_Tokens::get( $token_id );
@@ -353,23 +351,30 @@ function payload_retry_orders_after_card_update( $token_id, $token = null ) {
 		if ( ! $order instanceof WC_Order ) {
 			continue;
 		}
-
-		if ( strval( $order->get_payment_method() ) !== strval( $token->get_id() ) ) {
-			$order->set_payment_method( $token->get_id() );
-
-			if ( method_exists( $token, 'get_card_type' ) && method_exists( $token, 'get_last4' ) && $token->get_last4() ) {
-				$method_title = sprintf(
-					__( '%1$s ending in %2$s', 'payload' ),
-					strtoupper( $token->get_card_type() ),
-					$token->get_last4()
-				);
-				$order->set_payment_method_title( $method_title );
-			}
-
-			$order->save();
+        $order_id = (int) $order->get_id();
+         // Order-scoped suppression check
+        if ( payload_card_update_retry_suppressed( $order_id ) ) {
+			continue;
 		}
+        payload_card_update_retry_suppressed( $order_id, true );
 
 		try {
+            if ( strval( $order->get_payment_method() ) !== strval( $token->get_id() ) ) {
+                $order->set_payment_method( $token->get_id() );
+
+                if ( method_exists( $token, 'get_card_type' ) && method_exists( $token, 'get_last4' ) && $token->get_last4() ) {
+                    $method_title = sprintf(
+                        __( '%1$s ending in %2$s', 'payload' ),
+                        strtoupper( $token->get_card_type() ),
+                        $token->get_last4()
+                    );
+                    $order->set_payment_method_title( $method_title );
+                }
+
+                $order->save();
+            }
+
+	
 			$gateway->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
 			$order->add_order_note( __( 'Automatically retried payment after customer updated saved card.', 'payload' ) );
 		} catch ( Exception $e ) {
@@ -379,9 +384,13 @@ function payload_retry_orders_after_card_update( $token_id, $token = null ) {
 					$e->getMessage()
 				)
 			);
-		}
-	}
+		} finally {
+            // Remove order-scoped suppression
+            payload_card_update_retry_suppressed( $order_id, false );       
+        }
+    }
 }
+
 
 function payload_get_gateway_instance() {
 	if ( function_exists( 'WC' ) ) {
@@ -401,12 +410,23 @@ function payload_get_gateway_instance() {
 	return null;
 }
 
-function payload_card_update_retry_suppressed( $status = null ) {
-	static $suppressed = false;
+function payload_card_update_retry_suppressed( $order_id = null, $status = null ) {
+	static $suppressed_orders = [];
 
-	if ( null !== $status ) {
-		$suppressed = (bool) $status;
+	$order_id = $order_id ? (int) $order_id : 0;
+
+	// If no order context, default to NOT suppressed.
+	if ( ! $order_id ) {
+		return false;
 	}
 
-	return $suppressed;
+	if ( null !== $status ) {
+		if ( $status ) {
+			$suppressed_orders[ $order_id ] = true;
+		} else {
+			unset( $suppressed_orders[ $order_id ] );
+		}
+	}
+
+	return ! empty( $suppressed_orders[ $order_id ] );
 }
