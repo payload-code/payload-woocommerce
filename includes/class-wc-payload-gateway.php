@@ -341,6 +341,19 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	return $payment;
 }
 
+    public function find_user_by_payload_customer_id( $payload_customer_id ) {
+        $users = get_users( array(
+            'meta_key'   => 'payload_customer_id',
+            'meta_value' => $payload_customer_id,
+            'number'     => 1,
+            'fields'     => 'ID',
+        ) );    
+        if ( ! empty( $users ) ) {
+            return $users[0];
+        }
+
+    }
+
 	public function create_token( $payment_method,$set_current_user=null ) {
 		$token = new WC_Payment_Token_CC();
 		$token->set_token( $payment_method['id'] );
@@ -349,6 +362,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$token->set_last4( substr( $payment_method['card']['card_number'], -4 ) );
 		$token->set_expiry_month( substr( $payment_method['card']['expiry'], 0, 2 ) );
 		$token->set_expiry_year( substr( $payment_method['card']['expiry'], -4 ) );
+        $set_current_user = $this->find_user_by_payload_customer_id( $set_current_user );   
 		if($set_current_user){
 			//We create this flag just incase Admin is changing payment method for a user
 			$token->set_user_id( $set_current_user );
