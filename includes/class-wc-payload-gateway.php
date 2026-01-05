@@ -325,13 +325,15 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	public function handle_order_payment( $order, $payment ) {
     $order->set_transaction_id( $payment->ref_number );
     $order_id =  $order->get_id();
-    if($payment->status  == 'authorized' ){
+    // Non virtual goods will be processed manaully after admin review
+    if($payment->status  == 'authorized'  ){
         $payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
         $user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
         if(!empty($user_company)){
             $payment->update( array('attrs' => array( 'Company Name' => $user_company ) ) );
         }
     }
+    // Virtual Goods will be completed automatically
     if ($payment->status  == 'processed' && $this->is_virtual($order_id)){
 			$order->payment_complete();
 			
