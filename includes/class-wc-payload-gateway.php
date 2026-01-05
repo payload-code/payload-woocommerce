@@ -506,7 +506,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				$order->save();
 				}
 			
-			return $order->get_user_id();
+			return $payload_customer_id ;
 	}
 
 	    protected function get_order_customer_id( $order ) {
