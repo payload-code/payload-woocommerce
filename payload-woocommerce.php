@@ -62,7 +62,7 @@ add_action( 'profile_update', function( $user_id, $old_user ) {
             $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
                 array(
                     'email' => $user->user_email,
-                    'name'  => $user->user_nicename,
+                    'name'  => $user->display_name,
                     'attrs' => array(
                         '_wp_user_id' => $user_id,
                         'Company Name'=>get_user_meta( $user_id, 'billing_company', true
