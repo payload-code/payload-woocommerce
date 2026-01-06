@@ -85,13 +85,15 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 	// Process the payment
 	public function process_payment( $order_id ) {
-		payload_card_update_retry_suppressed( true );
+	
 
 		try {
 			setup_payload_api();
 
 			$order = wc_get_order( $order_id );
-
+             payload_card_update_retry_suppressed( $order_id,true );
+			
+		
 			$user_id_from_order = $this->get_order_customer_id($order);	
 
 			// Update subscription payment method if wc subscription exists
@@ -198,7 +200,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				'redirect' => $this->get_return_url( $order ),
 			);
 		} finally {
-			payload_card_update_retry_suppressed( false );
+			payload_card_update_retry_suppressed( $order_id, false );
 		}
 	}
 
