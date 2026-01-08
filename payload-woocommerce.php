@@ -188,18 +188,54 @@ add_action('admin_notices', function () {
 		esc_html($message)
 	);
 });
+add_action('woocommerce_created_customer', function ($customer_id) {
+       if( ! $customer_id ) {
+        return;
+    }
+    if ( get_user_meta($customer_id, 'payload_customer_id', true) ) {
+    return;
+    }
+    setup_payload_api();
+    // User NOW exists
+      get_payload_customer_id($customer_id);
+});
 
-function get_payload_customer_id() {
+add_action('woocommerce_checkout_order_processed',function ($order_id, $posted_data, $order) {
+    // When new user is created it wasnt getting Payload Customer ID only existing users get customer id
+    // User NOW exists
+
+    $customer_id = $order->get_customer_id();
+    if( ! $customer_id ) {
+        return;
+    }
+    if ( get_user_meta($customer_id, 'payload_customer_id', true) ) {
+    return;
+    }
+
+    setup_payload_api();
+    get_payload_customer_id($customer_id);
+    // print_r($_POST);
+    // die();
+}, 10, 3);
+
+
+function get_payload_customer_id($user_id=null) {
 	$payload_customer_id = null;
+    if($user_id){
+        $user = get_user_by( 'id', $user_id );
+    } else {
+        	$user = wp_get_current_user();
+    }
 
-	$user = wp_get_current_user();
-	if (!empty($user)){
-		
-		$payload_customer_id = get_user_meta( $user->ID, 'payload_customer_id', true );
-	}
+    $payload_customer_id = !empty($user) ? get_user_meta( $user->ID, 'payload_customer_id', true ) : null;
+
+    $logger = wc_get_logger();
+    $context = [ 'source' => 'payload-woocommerce.php' ]; // shows up as the log "Source"
+     $logger->info('Script started Payload Customer ID checking '.print_r($user, true), $context);
+
 
 		if(!$payload_customer_id && !empty($user) && $user->user_email){
-
+        $logger->info('$User variable is not empty here is the email:'.$user->user_email, $context);
 			$customer = Payload\Customer::filter_by(
 				array("email"=>$user->user_email )
 			)->all();
@@ -207,10 +243,11 @@ function get_payload_customer_id() {
 				if(is_array($customer) && !empty($customer)){
 					$payload_customer_id = $customer[0]->id ;
 					update_user_meta( $user->ID, 'payload_customer_id', $payload_customer_id );
+                     $logger->info('Payload Customer ID found for user email:'.$user->user_email, $context);
 					return $payload_customer_id;
 				}
 		}
-
+        
 		if ( ! $payload_customer_id && !empty($user) && $user->user_email && $user->user_nicename ) {
 
 
@@ -221,11 +258,14 @@ function get_payload_customer_id() {
 								'name'  => $user->user_nicename,
 								'attrs' => array(
 									'_wp_user_id' => $user->ID,
-									'Company Name'=>get_user_meta( $user->ID, 'billing_company', true ),
+									'billing_company'=>get_user_meta( $user->ID, 'billing_company', true ),
 								),
 							)
 						);
+                         $logger->info('Payload Customer ID Created'.print_r($customer, true), $context);
 					}
+                     
+
 				if(!empty($customer))
 				{
 				$payload_customer_id = $customer->id;

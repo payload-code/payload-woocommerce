@@ -89,6 +89,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 		try {
 			setup_payload_api();
+            $logger = wc_get_logger();
+                $context = [ 'source' => 'payload-gateway.php' ]; // shows up as the log "Source"
+ $logger->info('Payment Process started for Order ID: ' . $order_id, $context);
+  $logger->info('Payment Post Details: ' . print_r($_POST, true), $context);
 
 			$order = wc_get_order( $order_id );
              payload_card_update_retry_suppressed( $order_id,true );
@@ -105,6 +109,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				
 
 				$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
+
+                $logger->info('Payment Method  Details'.print_r($payment_method, true), $context);
+                   $logger->info('Payment Data  Details'.print_r($_POST, true), $context);
+
 				$token = $this->create_token( $payment_method->data() , $user_id_from_order  );
 
 				$parent_order = wc_get_order( $order->get_parent_id() );
@@ -134,6 +142,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 					$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
 					$token          = $this->create_token( $payment_method->data()  , $user_id_from_order);
 
+                $logger->info('Process payment using token: Payment Method  Details'.print_r($payment_method, true), $context);
+                   $logger->info('Process payment using token: Payment Data  Details'.print_r($_POST, true), $context);
 					// Create and set token if subscription
 					if ( wcs_order_contains_subscription( $order_id ) ) {
 						$this->update_subscription_order_payment_method( $order, $token, $payment_method );
@@ -171,13 +181,16 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				
 
 				if ( ! $payment->customer_id ) {
-					$payload_customer_id = get_payload_customer_id();
+					$payload_customer_id = get_payload_customer_id( $user_id_from_order );
 					if ( $payload_customer_id ) {
 						
 						$payment->update( array( 'customer_id' => $payload_customer_id ) );
 					
 						$payment_method = Payload\PaymentMethod::get( $payment->payment_method_id );
 						$payment_method->update( array( 'account_id' => $payload_customer_id ) );
+
+                              $logger->info('Process payment pl transaction id: Payment Method  Details'.print_r($payment_method, true), $context);
+                   $logger->info('Process payment pl transaction id: Payment Data  Details'.print_r($_POST, true), $context);
 					}
 				}
 
@@ -185,7 +198,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 				// Create and set token if subscription
 				if ( function_exists("WC_Subscriptions_Order") && WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
-					$token = $this->create_token( $payment->payment_method , $this->set_customer_id_by_order($order)  );
+					$token = $this->create_token( $payment->payment_method , $user_id_from_order );
 					$order->add_payment_token( $token );
 				}
 			}
@@ -195,6 +208,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 
 			// Redirect to the thank you page
+             $logger->info('Payment Process ENDED for Order ID: ' . $order_id, $context);
 			return array(
 				'result'   => 'success',
 				'redirect' => $this->get_return_url( $order ),
@@ -202,6 +216,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		} finally {
 			payload_card_update_retry_suppressed( $order_id, false );
 		}
+
 	}
 
 	public function add_payment_method() {
@@ -308,7 +323,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	}
 
 	public function create_payment_for_order( $order, $amount, $payment_method_id ) {
-		$order_id =  $order->get_id();
+		try{
+        $order_id =  $order->get_id();
 		$payment_array = array(
 				'description'       =>  " Order Item(s): ".$this->get_order_product_name($order_id),
 				'amount'            => $amount,
@@ -319,8 +335,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$payment = Payload\Transaction::create(
 			$payment_array
 		);
-
-		$payment = $this->handle_order_payment( $order, $payment );
+        	$payment = $this->handle_order_payment( $order, $payment );
+    } catch ( Exception $e ) {
+        throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage );
+    }
 		return $payment;
 	}
 
@@ -332,7 +350,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
         $payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
         $user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
         if(!empty($user_company)){
-            $payment->update( array('attrs' => array( 'Company Name' => $user_company ) ) );
+            $payment->update( array('attrs' => array( 'billing_company' => $user_company ) ) );
         }
     }
     // Virtual Goods will be completed automatically
