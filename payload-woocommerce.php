@@ -59,13 +59,14 @@ add_action( 'profile_update', function( $user_id, $old_user ) {
 
 
         if( !empty($payload_customer_id)){
+            $company_name = get_user_meta( $user_id, 'billing_company', true )
             $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
                 array(
                     'email' => $user->user_email,
-                    'name'  => $user->display_name,
+                    'name'  => $company_name ? $company_name : $user->display_name,
                     'attrs' => array(
                         '_wp_user_id' => $user_id,
-                        'billing_company' => get_user_meta( $user_id, 'billing_company', true
+                        'Billing Company' => $company_name
                     )
                 )
                 )
@@ -250,15 +251,16 @@ function get_payload_customer_id($user_id=null) {
         
 		if ( ! $payload_customer_id && !empty($user) && $user->user_email && $user->user_nicename ) {
 
-
+            $company_name = get_user_meta( $user->ID, 'billing_company', true );
 							// Create new Payload customer
 						$customer = Payload\Customer::create(
+                        
 							array(
 								'email' => $user->user_email,
-								'name'  => $user->user_nicename,
+								'name'  =>  'name'  => $company_name ? $company_name : $user->display_name,
 								'attrs' => array(
 									'_wp_user_id' => $user->ID,
-									'billing_company'=>get_user_meta( $user->ID, 'billing_company', true ),
+									'Billing Company'=>$company_name,
 								),
 							)
 						);
