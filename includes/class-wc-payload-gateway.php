@@ -150,7 +150,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 					}
 				}
 
-				$this->maybe_retry_on_hold_order( $order, $token );
+				//$this->maybe_retry_on_hold_order( $order, $token );
 
 				try {
 					$payment = $this->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
@@ -240,7 +240,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$order->set_payment_method( $token->get_id() );
 		$order->set_payment_method_title( $payment_method->description );
 		$order->save();
-		$this->maybe_retry_on_hold_order( $order, $token );
+		//$this->maybe_retry_on_hold_order( $order, $token );
 	}
 
 	public function scheduled_subscription_payment( $amount, $renewal_order, $retry = true, $previous_error = false ) {
@@ -353,8 +353,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
             $payment->update( array('attrs' => array( 'billing_company' => $user_company ) ) );
         }
     }
-    // Virtual Goods will be completed automatically
-    if ($payment->status  == 'processed' && $this->is_virtual($order_id)){
+   
+    if ($payment->status  == 'processed' ){
 			$order->payment_complete();
 			
     }
