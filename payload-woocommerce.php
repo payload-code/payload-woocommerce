@@ -13,6 +13,8 @@
  * Domain Path: /languages
  */
 
+defined( 'ABSPATH' ) || exit;
+
 require_once 'vendor/autoload.php';
 use Payload\API as pl;
 // Force a Company field to show on the billing section
@@ -37,8 +39,8 @@ add_action( 'woocommerce_after_checkout_billing_form', function( $checkout ) {
 // Save billing_company to the order and user meta
 add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
 
-    if ( ! empty( $_POST['billing_company'] ) ) {
-        $company = sanitize_text_field( $_POST['billing_company'] );
+    if ( isset( $_POST['billing_company'] ) && ! empty( $_POST['billing_company'] ) ) {
+        $company = sanitize_text_field( wp_unslash( $_POST['billing_company'] ) );
 
         // Set on the order
         $order->set_billing_company( $company );
@@ -59,7 +61,7 @@ add_action( 'profile_update', function( $user_id, $old_user ) {
 
 
         if( !empty($payload_customer_id)){
-            $company_name = get_user_meta( $user_id, 'billing_company', true )
+            $company_name = get_user_meta( $user_id, 'billing_company', true );
             $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
                 array(
                     'email' => $user->user_email,
@@ -138,7 +140,7 @@ add_action( 'woocommerce_payment_complete', function( $order_id ) {
     foreach ( $order->get_items() as $item ) {
         $product = $item->get_product();
 
-        if ( ! $product->is_virtual() && ! $product->is_downloadable() ) {
+        if ( ! $product || ( ! $product->is_virtual() && ! $product->is_downloadable() ) ) {
             $virtual_order = false;
             break;
         }
@@ -159,7 +161,8 @@ add_action('admin_init', function () {
 	// Example trigger: append ?my_notice=1 to any wp-admin URL
 	if (!current_user_can('manage_options')) return;
 
-	if (isset($_GET['my_notice']) && $_GET['my_notice'] === '1') {
+	$my_notice = isset( $_GET['my_notice'] ) ? sanitize_text_field( wp_unslash( $_GET['my_notice'] ) ) : '';
+	if ( $my_notice === '1' ) {
 		set_transient('my_admin_flash_notice_' . get_current_user_id(), [
 			'message' => '✅ Settings saved successfully.',
 			'type'    => 'success', // success | warning | error | info
@@ -215,8 +218,6 @@ add_action('woocommerce_checkout_order_processed',function ($order_id, $posted_d
 
     setup_payload_api();
     get_payload_customer_id($customer_id);
-    // print_r($_POST);
-    // die();
 }, 10, 3);
 
 
@@ -232,7 +233,7 @@ function get_payload_customer_id($user_id=null) {
 
     $logger = wc_get_logger();
     $context = [ 'source' => 'payload-woocommerce.php' ]; // shows up as the log "Source"
-     $logger->info('Script started Payload Customer ID checking '.print_r($user, true), $context);
+     $logger->info('Script started Payload Customer ID checking for user ID: ' . ( $user ? $user->ID : 'none' ), $context);
 
 
 		if(!$payload_customer_id && !empty($user) && $user->user_email){
@@ -257,14 +258,14 @@ function get_payload_customer_id($user_id=null) {
                         
 							array(
 								'email' => $user->user_email,
-								'name'  =>  'name'  => $company_name ? $company_name : $user->display_name,
+								'name'  => $company_name ? $company_name : $user->display_name,
 								'attrs' => array(
 									'_wp_user_id' => $user->ID,
 									'Billing Company'=>$company_name,
 								),
 							)
 						);
-                         $logger->info('Payload Customer ID Created'.print_r($customer, true), $context);
+                         $logger->info('Payload Customer ID Created: ' . ( isset( $customer->id ) ? $customer->id : 'unknown' ), $context);
 					}
                      
 
@@ -285,7 +286,8 @@ function get_intent( $data ) {
 
 	$payload_customer_id = get_payload_customer_id();
 
-	if ( $_GET['type'] == 'payment_method' ) {
+	$request_type = isset( $_GET['type'] ) ? sanitize_text_field( wp_unslash( $_GET['type'] ) ) : '';
+	if ( $request_type === 'payment_method' ) {
 		$intent = array(
 			'payment_method_form' => array(
 				'payment_method' => array(
@@ -317,8 +319,11 @@ add_action(
 			'wc/v3',
 			'payload_client_token',
 			array(
-				'methods'  => 'GET',
-				'callback' => 'get_intent',
+				'methods'             => 'GET',
+				'callback'            => 'get_intent',
+				'permission_callback' => function() {
+					return is_user_logged_in();
+				},
 			)
 		);
 	}
@@ -326,7 +331,17 @@ add_action(
 
 function setup_payload_api() {
 	$settings = get_option( 'woocommerce_payload_settings', array() );
-	pl::$api_key = $settings['api_key'];
+
+	if ( ! empty( $settings['api_key'] ) ) {
+		pl::$api_key = $settings['api_key'];
+	} else {
+		// Log error if API key is missing
+		if ( function_exists( 'wc_get_logger' ) ) {
+			$logger = wc_get_logger();
+			$logger->error( 'Payload API key is not configured', array( 'source' => 'payload-woocommerce' ) );
+		}
+	}
+
 	if ( getenv( 'PAYLOAD_API_URL' ) ) {
 		pl::$api_url = getenv( 'PAYLOAD_API_URL' );
 	}
@@ -373,7 +388,7 @@ function payload_retry_orders_after_card_update( $token_id, $token = null ) {
 		'status'         => array( 'wc-on-hold', 'wc-pending' ),
 		'payment_method' => 'payload',
 		'type'           => array( 'shop_order', 'shop_subscription' ),
-		'limit'          => -1,
+		'limit'          => 20, // Limit to 20 orders to prevent memory exhaustion
 		'orderby'        => 'date',
 		'order'          => 'ASC',
 	);

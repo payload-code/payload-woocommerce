@@ -1,4 +1,28 @@
 <?php
+/**
+ * Payload Payment Gateway Class
+ *
+ * Handles payment processing for Payload payment gateway.
+ *
+ * @package Payload_WooCommerce
+ * @since   1.0.0
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * TransactionDeclined Exception
+ *
+ * Thrown when a payment transaction is declined.
+ */
+class TransactionDeclined extends Exception {
+	public $error_description;
+
+	public function __construct( $message = '', $code = 0, Exception $previous = null ) {
+		parent::__construct( $message, $code, $previous );
+		$this->error_description = $message;
+	}
+}
 
 class WC_Payload_Gateway extends WC_Payment_Gateway {
 
@@ -92,7 +116,6 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
             $logger = wc_get_logger();
                 $context = [ 'source' => 'payload-gateway.php' ]; // shows up as the log "Source"
  $logger->info('Payment Process started for Order ID: ' . $order_id, $context);
-  $logger->info('Payment Post Details: ' . print_r($_POST, true), $context);
 
 			$order = wc_get_order( $order_id );
              payload_card_update_retry_suppressed( $order_id,true );
@@ -103,23 +126,22 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			// Update subscription payment method if wc subscription exists
 			if (function_exists('wcs_is_subscription') && wcs_is_subscription( $order_id ) ) {
 
-				if ( ! $_POST['payment_method_id'] ) {
+				$payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
+				if ( empty( $payment_method_id ) ) {
 					throw new Exception( 'Missing payment method details' );
 				}
-				
 
-				$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
 
-                $logger->info('Payment Method  Details'.print_r($payment_method, true), $context);
-                   $logger->info('Payment Data  Details'.print_r($_POST, true), $context);
+				$payment_method = Payload\PaymentMethod::get( $payment_method_id );
 
 				$token = $this->create_token( $payment_method->data() , $user_id_from_order  );
 
 				$parent_order = wc_get_order( $order->get_parent_id() );
 
 				$this->update_subscription_order_payment_method( $parent_order, $token, $payment_method );
-			
-				if ( $_POST['update_all_subscriptions_payment_method'] == '1' ) {
+
+				$update_all = isset( $_POST['update_all_subscriptions_payment_method'] ) ? sanitize_text_field( wp_unslash( $_POST['update_all_subscriptions_payment_method'] ) ) : '';
+				if ( $update_all === '1' ) {
 					// Update all subscriptions to the new payment method if selected
 					$subscriptions = wcs_get_users_subscriptions( $user_id_from_order );
 					foreach ( $subscriptions as $subscription ) {
@@ -135,15 +157,15 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			}
 
 			// Process payment using token
-			if ( $_POST['token'] || $_POST['payment_method_id'] ) {
-				if ( $_POST['token'] ) {
-					$token = WC_Payment_Tokens::get( $_POST['token'] );
+			$post_token = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
+			$post_payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
+			if ( ! empty( $post_token ) || ! empty( $post_payment_method_id ) ) {
+				if ( ! empty( $post_token ) ) {
+					$token = WC_Payment_Tokens::get( $post_token );
 				} else {
-					$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
+					$payment_method = Payload\PaymentMethod::get( $post_payment_method_id );
 					$token          = $this->create_token( $payment_method->data()  , $user_id_from_order);
 
-                $logger->info('Process payment using token: Payment Method  Details'.print_r($payment_method, true), $context);
-                   $logger->info('Process payment using token: Payment Data  Details'.print_r($_POST, true), $context);
 					// Create and set token if subscription
 					if ( wcs_order_contains_subscription( $order_id ) ) {
 						$this->update_subscription_order_payment_method( $order, $token, $payment_method );
@@ -165,11 +187,12 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			// Confirm payment processed on client side
 			else {
 
-				if ( ! $_POST['transactionid'] ) {
+				$transaction_id = isset( $_POST['transactionid'] ) ? sanitize_text_field( wp_unslash( $_POST['transactionid'] ) ) : '';
+				if ( empty( $transaction_id ) ) {
 					throw new Exception( 'Missing payment details' );
 				}
 
-				$payment = Payload\Transaction::get( $_POST['transactionid'] );
+				$payment = Payload\Transaction::get( $transaction_id );
 
 				$amt = $order->get_total();
 
@@ -189,15 +212,13 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 						$payment_method = Payload\PaymentMethod::get( $payment->payment_method_id );
 						$payment_method->update( array( 'account_id' => $payload_customer_id ) );
 
-                              $logger->info('Process payment pl transaction id: Payment Method  Details'.print_r($payment_method, true), $context);
-                   $logger->info('Process payment pl transaction id: Payment Data  Details'.print_r($_POST, true), $context);
 					}
 				}
 
 				$order->set_transaction_id( $payment->ref_number );
 
 				// Create and set token if subscription
-				if ( function_exists("WC_Subscriptions_Order") && WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
+				if ( class_exists("WC_Subscriptions_Order") && WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
 					$token = $this->create_token( $payment->payment_method , $user_id_from_order );
 					$order->add_payment_token( $token );
 				}
@@ -222,11 +243,12 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	public function add_payment_method() {
 		setup_payload_api();
 
-		if ( ! $_POST['payment_method_id'] ) {
+		$payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
+		if ( empty( $payment_method_id ) ) {
 			throw new Exception( 'Missing payment method details' );
 		}
 
-		$payment_method = Payload\PaymentMethod::get( $_POST['payment_method_id'] );
+		$payment_method = Payload\PaymentMethod::get( $payment_method_id );
 
 		$token = $this->create_token( $payment_method->data() );
 
@@ -337,7 +359,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		);
         	$payment = $this->handle_order_payment( $order, $payment );
     } catch ( Exception $e ) {
-        throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage );
+        throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage() );
     }
 		return $payment;
 	}
@@ -488,7 +510,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$items = $order->get_items();
 
 		foreach ( $items as $item ) {
-			if ( !$item->get_product()->is_virtual() ) {
+			$product = $item->get_product();
+			if ( ! $product || ! $product->is_virtual() ) {
 				return false;
 			}
 		}
