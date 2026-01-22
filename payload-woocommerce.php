@@ -19,6 +19,42 @@ require_once 'vendor/autoload.php';
 use Payload\API as pl;
 
 /**
+ * Meta key constant for storing Payload customer ID in WordPress user meta.
+ *
+ * @since 1.4.0
+ */
+define( 'PAYLOAD_CUSTOMER_ID_META_KEY', 'payload_customer_id' );
+
+/**
+ * Get the Payload customer ID meta key value for a user.
+ *
+ * Helper function to retrieve the Payload customer ID from user meta without
+ * creating a new customer if one doesn't exist. For customer creation, use
+ * get_payload_customer_id() instead.
+ *
+ * @since 1.4.0
+ * @param int $user_id WordPress user ID.
+ * @return string|false Payload customer ID or false if not found.
+ */
+function payload_get_customer_id_meta( $user_id ) {
+	return get_user_meta( $user_id, PAYLOAD_CUSTOMER_ID_META_KEY, true );
+}
+
+/**
+ * Update the Payload customer ID for a user.
+ *
+ * Helper function to store a Payload customer ID in WordPress user meta.
+ *
+ * @since 1.4.0
+ * @param int    $user_id              WordPress user ID.
+ * @param string $payload_customer_id  Payload customer ID to store.
+ * @return int|bool Meta ID on success, false on failure.
+ */
+function payload_update_customer_id_meta( $user_id, $payload_customer_id ) {
+	return update_user_meta( $user_id, PAYLOAD_CUSTOMER_ID_META_KEY, $payload_customer_id );
+}
+
+/**
  * Display billing company field on checkout form.
  *
  * Adds a company name field to the WooCommerce billing section during checkout.
@@ -88,7 +124,7 @@ function payload_sync_customer_on_profile_update( $user_id, $old_user ) {
     setup_payload_api();
     $user = get_userdata( $user_id );
 
-    $payload_customer_id = get_user_meta( $user_id, 'payload_customer_id', true );
+    $payload_customer_id = payload_get_customer_id_meta( $user_id );
 
 
         if( !empty($payload_customer_id)){
@@ -103,8 +139,7 @@ function payload_sync_customer_on_profile_update( $user_id, $old_user ) {
                             'Billing Company' => $company_name
                         )
                     )
-                    )
-                        );
+                );
             } catch ( Exception $e ) {
                 $logger = wc_get_logger();
                 $logger->error(
@@ -216,26 +251,17 @@ function payload_register_blocks_payment_method( $payment_method_registry ) {
  * @param int $order_id Order ID that received payment.
  */
 function payload_autocomplete_virtual_orders( $order_id ) {
+    $gateway = payload_get_gateway_instance();
 
-    $order = wc_get_order( $order_id );
-
-    // Check if ALL items are virtual or downloadable
-    $virtual_order = true;
-
-    foreach ( $order->get_items() as $item ) {
-        $product = $item->get_product();
-
-        if ( ! $product || ( ! $product->is_virtual() && ! $product->is_downloadable() ) ) {
-            $virtual_order = false;
-            break;
-        }
+    if ( ! $gateway ) {
+        return;
     }
 
-    // Auto-complete the order
-    if ( $virtual_order ) {
+    // Use gateway's is_virtual method to check if order contains only virtual/downloadable products
+    if ( $gateway->is_virtual( $order_id ) ) {
+        $order = wc_get_order( $order_id );
         $order->update_status( 'completed', 'Order auto-completed because it contains only virtual products.' );
     }
-
 }
 // Auto-complete orders with only virtual/downloadable products
 add_action( 'woocommerce_payment_complete', 'payload_autocomplete_virtual_orders' );
@@ -312,7 +338,7 @@ function payload_create_customer_on_registration( $customer_id ) {
        if( ! $customer_id ) {
         return;
     }
-    if ( get_user_meta($customer_id, 'payload_customer_id', true) ) {
+    if ( payload_get_customer_id_meta( $customer_id ) ) {
     return;
     }
     setup_payload_api();
@@ -342,7 +368,7 @@ function payload_ensure_customer_after_checkout( $order_id, $posted_data, $order
     if( ! $customer_id ) {
         return;
     }
-    if ( get_user_meta($customer_id, 'payload_customer_id', true) ) {
+    if ( payload_get_customer_id_meta( $customer_id ) ) {
     return;
     }
 
@@ -371,7 +397,7 @@ function get_payload_customer_id($user_id=null) {
         	$user = wp_get_current_user();
     }
 
-    $payload_customer_id = !empty($user) ? get_user_meta( $user->ID, 'payload_customer_id', true ) : null;
+    $payload_customer_id = !empty($user) ? payload_get_customer_id_meta( $user->ID ) : null;
 
     $logger = wc_get_logger();
     $context = [ 'source' => 'payload-woocommerce.php' ]; // shows up as the log "Source"
@@ -387,7 +413,7 @@ function get_payload_customer_id($user_id=null) {
 
 					if(is_array($customer) && !empty($customer)){
 						$payload_customer_id = $customer[0]->id ;
-						update_user_meta( $user->ID, 'payload_customer_id', $payload_customer_id );
+						payload_update_customer_id_meta( $user->ID, $payload_customer_id );
 	                     $logger->info('Payload Customer ID found for user email:'.$user->user_email, $context);
 						return $payload_customer_id;
 					}
@@ -431,7 +457,7 @@ function get_payload_customer_id($user_id=null) {
 				{
 				$payload_customer_id = $customer->id;
 
-				update_user_meta( $user->ID, 'payload_customer_id', $payload_customer_id );
+				payload_update_customer_id_meta( $user->ID, $payload_customer_id );
 				}
 		
 	

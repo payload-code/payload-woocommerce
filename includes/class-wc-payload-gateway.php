@@ -489,13 +489,20 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	return $payment;
 }
 
+    /**
+     * Find a WordPress user by their Payload customer ID.
+     *
+     * @since 1.0.0
+     * @param string $payload_customer_id Payload customer ID to search for.
+     * @return int|null User ID if found, null otherwise.
+     */
     public function find_user_by_payload_customer_id( $payload_customer_id ) {
         $users = get_users( array(
-            'meta_key'   => 'payload_customer_id',
+            'meta_key'   => PAYLOAD_CUSTOMER_ID_META_KEY,
             'meta_value' => $payload_customer_id,
             'number'     => 1,
             'fields'     => 'ID',
-        ) );    
+        ) );
         if ( ! empty( $users ) ) {
             return $users[0];
         }
@@ -614,8 +621,17 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
 	}
 
+	/**
+	 * Check if an order contains only virtual or downloadable products.
+	 *
+	 * Determines whether an order can be auto-completed without physical shipping.
+	 *
+	 * @since 1.0.0
+	 * @param int $order_id Order ID to check.
+	 * @return bool True if all products are virtual or downloadable, false otherwise.
+	 */
 	public function is_virtual($order_id){
-		
+
 		$order = wc_get_order( $order_id );
 		if(empty($order)){
 			return false;
@@ -624,7 +640,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 		foreach ( $items as $item ) {
 			$product = $item->get_product();
-			if ( ! $product || ! $product->is_virtual() ) {
+			if ( ! $product || ( ! $product->is_virtual() && ! $product->is_downloadable() ) ) {
 				return false;
 			}
 		}
