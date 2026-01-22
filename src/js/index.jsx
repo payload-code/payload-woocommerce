@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as ReactDOM from 'react-dom';
 import { decodeEntities } from '@wordpress/html-entities';
 import {
-    PaymentForm,
-    PaymentMethodForm,
-    Card,
-    PayloadInput,
+	PaymentForm,
+	PaymentMethodForm,
+	Card,
+	PayloadInput,
 } from 'payload-react';
 
 import '../css/style.scss';
@@ -14,345 +14,345 @@ import '../css/style.scss';
 const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
 const { getSetting } = window.wc.wcSettings;
 
-const settings = getSetting('payload', {});
+const settings = getSetting( 'payload', {} );
 const label =
-    decodeEntities(settings.title) ||
-    window.wp.i18n.__('Credit/Debit Card', 'payload');
+	decodeEntities( settings.title ) ||
+	window.wp.i18n.__( 'Credit/Debit Card', 'payload' );
 
 const PaymentMethodFields = () => {
-    const [nameInvalidMessage, setNameInvalidMessage] = useState();
-    const [cardInvalidMessage, setCardInvalidMessage] = useState();
+	const [ nameInvalidMessage, setNameInvalidMessage ] = useState();
+	const [ cardInvalidMessage, setCardInvalidMessage ] = useState();
 
-    return (
-        <div className="pl-form-container">
-            <div className="pl-form-control">
-                <label
-                    className="pl-input-label"
-                    htmlFor="payload-account-holder"
-                >
-                    Name on card
-                </label>
-                <PayloadInput
-                    id="payload-account-holder"
-                    attr="account_holder"
-                    placeholder="First and last"
-                    onInvalid={(evt) => {
-                        setNameInvalidMessage(evt.message);
-                    }}
-                    onValid={() => setNameInvalidMessage(null)}
-                />
-                <div className="pl-invalid-hint">{nameInvalidMessage}</div>
-            </div>
-            <div className="pl-form-control">
-                <label className="pl-input-label" htmlFor="payload-card">
-                    Card details
-                </label>
-                <Card
-                    id="payload-card"
-                    className="payload-card-input"
-                    onInvalid={(evt) => {
-                        setCardInvalidMessage(evt.message);
-                    }}
-                    onValid={() => setCardInvalidMessage(null)}
-                />
-                <div className="pl-invalid-hint">{cardInvalidMessage}</div>
-            </div>
-        </div>
-    );
+	return (
+		<div className="pl-form-container">
+			<div className="pl-form-control">
+				<label
+					className="pl-input-label"
+					htmlFor="payload-account-holder"
+				>
+					Name on card
+				</label>
+				<PayloadInput
+					id="payload-account-holder"
+					attr="account_holder"
+					placeholder="First and last"
+					onInvalid={ ( evt ) => {
+						setNameInvalidMessage( evt.message );
+					} }
+					onValid={ () => setNameInvalidMessage( null ) }
+				/>
+				<div className="pl-invalid-hint">{ nameInvalidMessage }</div>
+			</div>
+			<div className="pl-form-control">
+				<label className="pl-input-label" htmlFor="payload-card">
+					Card details
+				</label>
+				<Card
+					id="payload-card"
+					className="payload-card-input"
+					onInvalid={ ( evt ) => {
+						setCardInvalidMessage( evt.message );
+					} }
+					onValid={ () => setCardInvalidMessage( null ) }
+				/>
+				<div className="pl-invalid-hint">{ cardInvalidMessage }</div>
+			</div>
+		</div>
+	);
 };
 
-const Content = (props) => {
-    const { eventRegistration, emitResponse, billing } = props;
-    const { onPaymentSetup } = eventRegistration;
-    const [clientToken, setClientToken] = useState();
-    const paymentFormRef = useRef(null);
-    const hasSubscription = !!props.cartData.extensions?.subscriptions?.length;
+const Content = ( props ) => {
+	const { eventRegistration, emitResponse, billing } = props;
+	const { onPaymentSetup } = eventRegistration;
+	const [ clientToken, setClientToken ] = useState();
+	const paymentFormRef = useRef( null );
+	const hasSubscription = !! props.cartData.extensions?.subscriptions?.length;
 
-    useEffect(() => {
-        wp.apiFetch({ path: 'wc/v3/payload_client_token' }).then((data) =>
-            setClientToken(data.client_token)
-        );
+	useEffect( () => {
+		wp.apiFetch( { path: 'wc/v3/payload_client_token' } ).then( ( data ) =>
+			setClientToken( data.client_token )
+		);
 
-        const unsubscribe = onPaymentSetup(async () => {
-            try {
-                const result = await paymentFormRef.current.submit();
-                return {
-                    type: emitResponse.responseTypes.SUCCESS,
-                    meta: {
-                        paymentMethodData: {
-                            transactionId: result.transaction_id,
-                        },
-                    },
-                };
-            } catch (e) {
-                let errorMessage;
-                if (e.data?.error_type !== 'InvalidAttributes') {
-                    errorMessage = e.data?.error_description;
-                }
+		const unsubscribe = onPaymentSetup( async () => {
+			try {
+				const result = await paymentFormRef.current.submit();
+				return {
+					type: emitResponse.responseTypes.SUCCESS,
+					meta: {
+						paymentMethodData: {
+							transactionId: result.transaction_id,
+						},
+					},
+				};
+			} catch ( e ) {
+				let errorMessage;
+				if ( e.data?.error_type !== 'InvalidAttributes' ) {
+					errorMessage = e.data?.error_description;
+				}
 
-                return {
-                    type: emitResponse.responseTypes.ERROR,
-                    message: errorMessage ?? 'There was an error',
-                };
-            }
-        });
+				return {
+					type: emitResponse.responseTypes.ERROR,
+					message: errorMessage ?? 'There was an error',
+				};
+			}
+		} );
 
-        // Unsubscribes when this component is unmounted.
-        return () => {
-            unsubscribe();
-        };
-    }, [
-        emitResponse.responseTypes.ERROR,
-        emitResponse.responseTypes.SUCCESS,
-        onPaymentSetup,
-    ]);
+		// Unsubscribes when this component is unmounted.
+		return () => {
+			unsubscribe();
+		};
+	}, [
+		emitResponse.responseTypes.ERROR,
+		emitResponse.responseTypes.SUCCESS,
+		onPaymentSetup,
+	] );
 
-    return (
-        <>
-            {decodeEntities(settings.description || '')}
-            <PaymentForm
-                ref={paymentFormRef}
-                clientToken={clientToken}
-                styles={{ invalid: 'pl-input-invalid' }}
-                preventDefaultOnSubmit={true}
-                payment={{
-                    amount: billing.cartTotal.value / 100,
-                    payment_method: {
-                        keep_active: hasSubscription,
-                    },
-                }}
-            >
-                <PaymentMethodFields />
-            </PaymentForm>
-        </>
-    );
+	return (
+		<>
+			{ decodeEntities( settings.description || '' ) }
+			<PaymentForm
+				ref={ paymentFormRef }
+				clientToken={ clientToken }
+				styles={ { invalid: 'pl-input-invalid' } }
+				preventDefaultOnSubmit={ true }
+				payment={ {
+					amount: billing.cartTotal.value / 100,
+					payment_method: {
+						keep_active: hasSubscription,
+					},
+				} }
+			>
+				<PaymentMethodFields />
+			</PaymentForm>
+		</>
+	);
 };
 
 const AddPaymentMethod = () => {
-    const [clientToken, setClientToken] = useState();
-    const [paymentMethodId, setPaymentMethodId] = useState();
-    const [generalErrorMessage, setGeneralErrorMessage] = useState();
-    const addPaymentPaymentFormRef = useRef(null);
+	const [ clientToken, setClientToken ] = useState();
+	const [ paymentMethodId, setPaymentMethodId ] = useState();
+	const [ generalErrorMessage, setGeneralErrorMessage ] = useState();
+	const addPaymentPaymentFormRef = useRef( null );
 
-    const getForm = () => {
-        return (
-            document.getElementById('order_review') ??
-            document.getElementById('add_payment_method')
-        );
-    };
+	const getForm = () => {
+		return (
+			document.getElementById( 'order_review' ) ??
+			document.getElementById( 'add_payment_method' )
+		);
+	};
 
-    useEffect(() => {
-        wp.apiFetch({
-            path: 'wc/v3/payload_client_token?type=payment_method',
-        }).then((data) => setClientToken(data.client_token));
+	useEffect( () => {
+		wp.apiFetch( {
+			path: 'wc/v3/payload_client_token?type=payment_method',
+		} ).then( ( data ) => setClientToken( data.client_token ) );
 
-        const form = getForm();
-        const submitBtn = document.getElementById('place_order');
+		const form = getForm();
+		const submitBtn = document.getElementById( 'place_order' );
 
-        const preventDefault = (evt) => {
-            evt.preventDefault();
-        };
+		const preventDefault = ( evt ) => {
+			evt.preventDefault();
+		};
 
-        const submitPayloadForm = async (evt) => {
-            evt.preventDefault();
+		const submitPayloadForm = async ( evt ) => {
+			evt.preventDefault();
 
-            try {
-                const result = await addPaymentPaymentFormRef.current.submit();
-                setPaymentMethodId(result.payment_method_id);
-                removeListeners();
-            } catch (e) {
-                if (e.data?.error_type !== 'InvalidAttributes') {
-                    setGeneralErrorMessage(
-                        e.data?.error_description ?? 'There was an error'
-                    );
-                }
-            }
-        };
+			try {
+				const result = await addPaymentPaymentFormRef.current.submit();
+				setPaymentMethodId( result.payment_method_id );
+				removeListeners();
+			} catch ( e ) {
+				if ( e.data?.error_type !== 'InvalidAttributes' ) {
+					setGeneralErrorMessage(
+						e.data?.error_description ?? 'There was an error'
+					);
+				}
+			}
+		};
 
-        const removeListeners = () => {
-            form.removeEventListener('submit', preventDefault);
-            submitBtn.removeEventListener('click', submitPayloadForm);
-        };
+		const removeListeners = () => {
+			form.removeEventListener( 'submit', preventDefault );
+			submitBtn.removeEventListener( 'click', submitPayloadForm );
+		};
 
-        form.addEventListener('submit', preventDefault);
-        submitBtn.addEventListener('click', submitPayloadForm);
+		form.addEventListener( 'submit', preventDefault );
+		submitBtn.addEventListener( 'click', submitPayloadForm );
 
-        return removeListeners;
-    }, []);
+		return removeListeners;
+	}, [] );
 
-    useEffect(() => {
-        if (paymentMethodId) {
-            const submitBtn = document.getElementById('place_order');
-            submitBtn.click();
-        }
-    }, [paymentMethodId]);
+	useEffect( () => {
+		if ( paymentMethodId ) {
+			const submitBtn = document.getElementById( 'place_order' );
+			submitBtn.click();
+		}
+	}, [ paymentMethodId ] );
 
-    return (
-        <>
-            <PaymentMethodForm
-                ref={addPaymentPaymentFormRef}
-                clientToken={clientToken}
-                styles={{ invalid: 'pl-input-invalid' }}
-                preventDefaultOnSubmit={true}
-            >
-                {!!generalErrorMessage && (
-                    <div className="pl-form-error">{generalErrorMessage}</div>
-                )}
-                <PaymentMethodFields />
-            </PaymentMethodForm>
-            <input
-                type="hidden"
-                name="payment_method_id"
-                value={paymentMethodId}
-            />
-        </>
-    );
+	return (
+		<>
+			<PaymentMethodForm
+				ref={ addPaymentPaymentFormRef }
+				clientToken={ clientToken }
+				styles={ { invalid: 'pl-input-invalid' } }
+				preventDefaultOnSubmit={ true }
+			>
+				{ !! generalErrorMessage && (
+					<div className="pl-form-error">{ generalErrorMessage }</div>
+				) }
+				<PaymentMethodFields />
+			</PaymentMethodForm>
+			<input
+				type="hidden"
+				name="payment_method_id"
+				value={ paymentMethodId }
+			/>
+		</>
+	);
 };
 
-const Label = (props) => {
-    const { PaymentMethodLabel } = props.components;
-    return <PaymentMethodLabel text={label} />;
+const Label = ( props ) => {
+	const { PaymentMethodLabel } = props.components;
+	return <PaymentMethodLabel text={ label } />;
 };
 
 const BlockGateway = {
-    name: 'payload',
-    label: <Label />,
-    content: <Content />,
-    edit: <Content />,
-    canMakePayment: () => true,
-    ariaLabel: label,
-    supports: {
-        // showSaveOption: true,
-        // showSavedCard: true,
-        features: [
-            'products',
-            'tokenization',
-            'add_payment_method',
-            'subscriptions',
-            'subscription_cancellation',
-            'subscription_suspension',
-            'subscription_reactivation',
-            'subscription_amount_changes',
-            'subscription_date_changes',
-            'subscription_payment_method_change',
-            'subscription_payment_method_change_customer',
-            'subscription_payment_method_change_admin',
-            'multiple_subscriptions',
-        ],
-    },
+	name: 'payload',
+	label: <Label />,
+	content: <Content />,
+	edit: <Content />,
+	canMakePayment: () => true,
+	ariaLabel: label,
+	supports: {
+		// showSaveOption: true,
+		// showSavedCard: true,
+		features: [
+			'products',
+			'tokenization',
+			'add_payment_method',
+			'subscriptions',
+			'subscription_cancellation',
+			'subscription_suspension',
+			'subscription_reactivation',
+			'subscription_amount_changes',
+			'subscription_date_changes',
+			'subscription_payment_method_change',
+			'subscription_payment_method_change_customer',
+			'subscription_payment_method_change_admin',
+			'multiple_subscriptions',
+		],
+	},
 };
 
-registerPaymentMethod(BlockGateway);
+registerPaymentMethod( BlockGateway );
 
 const mountPaymentMethodForm = () => {
-    if (document.querySelector('#payload-add-payment-method')) {
-        const domContainer = document.querySelector(
-            '#payload-add-payment-method'
-        );
+	if ( document.querySelector( '#payload-add-payment-method' ) ) {
+		const domContainer = document.querySelector(
+			'#payload-add-payment-method'
+		);
 
-        const root = ReactDOM.createRoot(domContainer);
-        root.render(<AddPaymentMethod />);
-    }
+		const root = ReactDOM.createRoot( domContainer );
+		root.render( <AddPaymentMethod /> );
+	}
 };
 
 // Expose a single global that mounts the payment form ONCE
 // Expose a single global that mounts the payment form (handles lazy / re-renders)
-window.plMountPaymentMethodForm = (() => {
-    const TARGET_SELECTOR = '#payload-add-payment-method';
+window.plMountPaymentMethodForm = ( () => {
+	const TARGET_SELECTOR = '#payload-add-payment-method';
 
-    let mountedContainer = null; // track which exact element we mounted into
-    let pending = false;
-    let observer = null;
+	let mountedContainer = null; // track which exact element we mounted into
+	let pending = false;
+	let observer = null;
 
-    // --- helpers -------------------------------------------------------------
+	// --- helpers -------------------------------------------------------------
 
-    const actuallyMount = (container) => {
-        if (!container) {
-            return;
-        }
+	const actuallyMount = ( container ) => {
+		if ( ! container ) {
+			return;
+		}
 
-        // If we already mounted into this exact DOM node and it's still in the DOM, do nothing.
-        if (
-            mountedContainer === container &&
-            document.body.contains(container)
-        ) {
-            return;
-        }
+		// If we already mounted into this exact DOM node and it's still in the DOM, do nothing.
+		if (
+			mountedContainer === container &&
+			document.body.contains( container )
+		) {
+			return;
+		}
 
-        // If your function can take a container, pass it in:
-        // mountPaymentMethodForm(container);
-        mountPaymentMethodForm();
+		// If your function can take a container, pass it in:
+		// mountPaymentMethodForm(container);
+		mountPaymentMethodForm();
 
-        mountedContainer = container;
-    };
+		mountedContainer = container;
+	};
 
-    const cleanup = () => {
-        // We only remove the load listener so it doesn't fire again.
-        // We deliberately KEEP the observer so we can survive checkout re-renders.
-        window.removeEventListener('load', onLoad);
-    };
+	const cleanup = () => {
+		// We only remove the load listener so it doesn't fire again.
+		// We deliberately KEEP the observer so we can survive checkout re-renders.
+		window.removeEventListener( 'load', onLoad );
+	};
 
-    const onLoad = () => {
-        const container = document.querySelector(TARGET_SELECTOR);
+	const onLoad = () => {
+		const container = document.querySelector( TARGET_SELECTOR );
 
-        // If we have a container or had previously found it (pending), mount now.
-        if (container || (pending && container)) {
-            actuallyMount(container);
-            cleanup();
-        }
-    };
+		// If we have a container or had previously found it (pending), mount now.
+		if ( container || ( pending && container ) ) {
+			actuallyMount( container );
+			cleanup();
+		}
+	};
 
-    const handleFound = (container) => {
-        if (!container) {
-            return;
-        }
+	const handleFound = ( container ) => {
+		if ( ! container ) {
+			return;
+		}
 
-        // If everything is fully loaded, mount immediately
-        if (document.readyState === 'complete') {
-            actuallyMount(container);
-            // DO NOT clean up the observer here – we want to handle later re-renders
-            return;
-        }
+		// If everything is fully loaded, mount immediately
+		if ( document.readyState === 'complete' ) {
+			actuallyMount( container );
+			// DO NOT clean up the observer here – we want to handle later re-renders
+			return;
+		}
 
-        // DOM seen but page not fully loaded yet:
-        // mark as pending and let onLoad() do the actual mount.
-        pending = true;
-    };
+		// DOM seen but page not fully loaded yet:
+		// mark as pending and let onLoad() do the actual mount.
+		pending = true;
+	};
 
-    const initObserver = () => {
-        if (observer) {
-            return;
-        }
+	const initObserver = () => {
+		if ( observer ) {
+			return;
+		}
 
-        observer = new MutationObserver(() => {
-            // On any DOM change, see if our container exists and handle it
-            const container = document.querySelector(TARGET_SELECTOR);
-            if (container) {
-                handleFound(container);
-            }
-        });
+		observer = new MutationObserver( () => {
+			// On any DOM change, see if our container exists and handle it
+			const container = document.querySelector( TARGET_SELECTOR );
+			if ( container ) {
+				handleFound( container );
+			}
+		} );
 
-        observer.observe(document.documentElement || document.body, {
-            childList: true,
-            subtree: true,
-        });
-    };
+		observer.observe( document.documentElement || document.body, {
+			childList: true,
+			subtree: true,
+		} );
+	};
 
-    const init = () => {
-        // First, if the container already exists, handle it
-        const container = document.querySelector(TARGET_SELECTOR);
-        if (container) {
-            handleFound(container);
-        }
+	const init = () => {
+		// First, if the container already exists, handle it
+		const container = document.querySelector( TARGET_SELECTOR );
+		if ( container ) {
+			handleFound( container );
+		}
 
-        // Ensure we mount after all assets are loaded (good for lazy templates)
-    window.addEventListener('load', onLoad, { once: true });
+		// Ensure we mount after all assets are loaded (good for lazy templates)
+		window.addEventListener( 'load', onLoad, { once: true } );
 
-        // Watch for dynamic / lazy-loaded injection of the target container
-        initObserver();
-    };
+		// Watch for dynamic / lazy-loaded injection of the target container
+		initObserver();
+	};
 
-    return init;
-})();
+	return init;
+} )();
 
 window.plMountPaymentMethodForm();
