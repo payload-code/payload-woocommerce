@@ -353,7 +353,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 		$status = $renewal_order->get_status();
 
-		if ( $status != 'pending' ) {
+		if ( $status !== 'pending' ) {
 			return;
 		}
 
@@ -370,7 +370,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
                 $log = wc_get_logger();
                 $tokens = $parent_order->get_payment_tokens();
 
-                if ( count( $tokens ) == 0 ) {
+                if ( count( $tokens ) === 0 ) {
                     $log->error( 'No available payment method for order ' . $parent_order->get_id(), array( 'source' => 'payload' ) );
                     
                     $note = __( 'Automatic subscription payment failed: No payment method on file for this account.', 'payload' );
@@ -463,7 +463,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
     $order->set_transaction_id( $payment->ref_number );
     $order_id =  $order->get_id();
     // Non virtual goods will be processed manaully after admin review
-    if($payment->status  == 'authorized'  ){
+    if ( $payment->status === 'authorized' ) {
         try {
 			$payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
 			$user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
@@ -480,7 +480,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
     }
     // Virtual Goods will be completed automatically
-    if ($payment->status  == 'processed' && $this->is_virtual($order_id)){
+    if ( $payment->status === 'processed' && $this->is_virtual($order_id) ) {
 			$order->payment_complete();
 
     }
@@ -720,9 +720,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			//Check if card exist
 		$chk_tokens = WC_Payment_Tokens::get_customer_tokens( $token->get_user_id(), $this->id );
 		foreach ( $chk_tokens as $chk_token ) {
-			if ( $chk_token->get_last4() == $token->get_last4() &&
-				 $chk_token->get_expiry_month() == $token->get_expiry_month() &&
-				 $chk_token->get_expiry_year() == $token->get_expiry_year() ) {
+			if ( $chk_token->get_last4() === $token->get_last4() &&
+				 $chk_token->get_expiry_month() === $token->get_expiry_month() &&
+				 $chk_token->get_expiry_year() === $token->get_expiry_year() ) {
 				return $chk_token;	
 			}
 		}
