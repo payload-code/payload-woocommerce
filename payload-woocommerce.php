@@ -56,27 +56,36 @@ add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
 add_action( 'profile_update', function( $user_id, $old_user ) {
     setup_payload_api();
     $user = get_userdata( $user_id );
-     
+
     $payload_customer_id = get_user_meta( $user_id, 'payload_customer_id', true );
 
 
         if( !empty($payload_customer_id)){
             $company_name = get_user_meta( $user_id, 'billing_company', true );
-            $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
-                array(
-                    'email' => $user->user_email,
-                    'name'  => $company_name ? $company_name : $user->display_name,
-                    'attrs' => array(
-                        '_wp_user_id' => $user_id,
-                        'Billing Company' => $company_name
+            try {
+                $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
+                    array(
+                        'email' => $user->user_email,
+                        'name'  => $company_name ? $company_name : $user->display_name,
+                        'attrs' => array(
+                            '_wp_user_id' => $user_id,
+                            'Billing Company' => $company_name
+                        )
                     )
-                )
-                )
-                    );
-           
-         
+                    )
+                        );
+            } catch ( Exception $e ) {
+                $logger = wc_get_logger();
+                $logger->error(
+                    'Failed to update Payload customer on profile update for user ID ' . $user_id . ': ' . $e->getMessage(),
+                    array( 'source' => 'payload-woocommerce' )
+                );
+                // Fail silently - don't block profile updates
+            }
+
+
         }
-    
+
 
 }, 10, 2 );
 
@@ -272,36 +281,52 @@ function get_payload_customer_id($user_id=null) {
 
 		if(!$payload_customer_id && !empty($user) && $user->user_email){
         $logger->info('$User variable is not empty here is the email:'.$user->user_email, $context);
-			$customer = Payload\Customer::filter_by(
-				array("email"=>$user->user_email )
-			)->all();
-			
-				if(is_array($customer) && !empty($customer)){
-					$payload_customer_id = $customer[0]->id ;
-					update_user_meta( $user->ID, 'payload_customer_id', $payload_customer_id );
-                     $logger->info('Payload Customer ID found for user email:'.$user->user_email, $context);
-					return $payload_customer_id;
-				}
+			try {
+				$customer = Payload\Customer::filter_by(
+					array("email"=>$user->user_email )
+				)->all();
+
+					if(is_array($customer) && !empty($customer)){
+						$payload_customer_id = $customer[0]->id ;
+						update_user_meta( $user->ID, 'payload_customer_id', $payload_customer_id );
+	                     $logger->info('Payload Customer ID found for user email:'.$user->user_email, $context);
+						return $payload_customer_id;
+					}
+			} catch ( Exception $e ) {
+				$logger->error(
+					'Failed to retrieve Payload customer by email for user ID ' . $user->ID . ': ' . $e->getMessage(),
+					$context
+				);
+				// Continue to creation attempt
+			}
 		}
-        
+
 		if ( ! $payload_customer_id && !empty($user) && $user->user_email && $user->user_nicename ) {
 
             $company_name = get_user_meta( $user->ID, 'billing_company', true );
-							// Create new Payload customer
-						$customer = Payload\Customer::create(
-                        
-							array(
-								'email' => $user->user_email,
-								'name'  => $company_name ? $company_name : $user->display_name,
-								'attrs' => array(
-									'_wp_user_id' => $user->ID,
-									'Billing Company'=>$company_name,
-								),
-							)
-						);
-                         $logger->info('Payload Customer ID Created: ' . ( isset( $customer->id ) ? $customer->id : 'unknown' ), $context);
+			try {
+				// Create new Payload customer
+				$customer = Payload\Customer::create(
+
+					array(
+						'email' => $user->user_email,
+						'name'  => $company_name ? $company_name : $user->display_name,
+						'attrs' => array(
+							'_wp_user_id' => $user->ID,
+							'Billing Company'=>$company_name,
+						),
+					)
+				);
+	                     $logger->info('Payload Customer ID Created: ' . ( isset( $customer->id ) ? $customer->id : 'unknown' ), $context);
+			} catch ( Exception $e ) {
+				$logger->error(
+					'Failed to create Payload customer for user ID ' . $user->ID . ': ' . $e->getMessage(),
+					$context
+				);
+				return null;
+			}
 					}
-                     
+
 
 				if(!empty($customer))
 				{
@@ -348,11 +373,24 @@ function get_intent( $data ) {
 		);
 	}
 
-	$clientToken = Payload\ClientToken::create(
-		array( 'intent' => $intent ),
-	);
+	try {
+		$clientToken = Payload\ClientToken::create(
+			array( 'intent' => $intent ),
+		);
 
-	return array( 'client_token' => $clientToken->id );
+		return array( 'client_token' => $clientToken->id );
+	} catch ( Exception $e ) {
+		$logger = wc_get_logger();
+		$logger->error(
+			'Failed to create Payload client token: ' . $e->getMessage(),
+			array( 'source' => 'payload-woocommerce' )
+		);
+		return new WP_Error(
+			'payload_token_error',
+			__( 'Unable to initialize payment form. Please try again later.', 'payload' ),
+			array( 'status' => 500 )
+		);
+	}
 }
 
 add_action(

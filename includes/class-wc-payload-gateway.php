@@ -168,7 +168,16 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			throw new Exception( __( 'Missing payment method details', 'payload' ) );
 		}
 
-		$payment_method = Payload\PaymentMethod::get( $payment_method_id );
+		try {
+			$payment_method = Payload\PaymentMethod::get( $payment_method_id );
+		} catch ( Exception $e ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'Failed to retrieve payment method for subscription update: ' . $e->getMessage(),
+				array( 'source' => 'payload-gateway' )
+			);
+			throw new Exception( __( 'Unable to retrieve payment method. Please try again.', 'payload' ) );
+		}
 		$token = $this->create_token( $payment_method->data(), $user_id_from_order );
 
 		$parent_order = wc_get_order( $order->get_parent_id() );
@@ -204,7 +213,16 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		if ( ! empty( $post_token ) ) {
 			$token = WC_Payment_Tokens::get( $post_token );
 		} else {
-			$payment_method = Payload\PaymentMethod::get( $post_payment_method_id );
+			try {
+				$payment_method = Payload\PaymentMethod::get( $post_payment_method_id );
+			} catch ( Exception $e ) {
+				$logger = wc_get_logger();
+				$logger->error(
+					'Failed to retrieve payment method: ' . $e->getMessage(),
+					array( 'source' => 'payload-gateway' )
+				);
+				throw new Exception( __( 'Unable to retrieve payment method. Please try again.', 'payload' ) );
+			}
 			$token = $this->create_token( $payment_method->data(), $user_id_from_order );
 
 			// Create and set token if subscription
@@ -237,7 +255,16 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			throw new Exception( __( 'Missing payment details', 'payload' ) );
 		}
 
-		$payment = Payload\Transaction::get( $transaction_id );
+		try {
+			$payment = Payload\Transaction::get( $transaction_id );
+		} catch ( Exception $e ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'Failed to retrieve transaction: ' . $e->getMessage(),
+				array( 'source' => 'payload-gateway' )
+			);
+			throw new Exception( __( 'Unable to verify payment. Please contact support.', 'payload' ) );
+		}
 
 		// Validate payment amount
 		$amt = (float) $order->get_total();
@@ -271,10 +298,19 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	protected function associate_customer_with_payment( $payment, $user_id ) {
 		$payload_customer_id = get_payload_customer_id( $user_id );
 		if ( $payload_customer_id ) {
-			$payment->update( array( 'customer_id' => $payload_customer_id ) );
+			try {
+				$payment->update( array( 'customer_id' => $payload_customer_id ) );
 
-			$payment_method = Payload\PaymentMethod::get( $payment->payment_method_id );
-			$payment_method->update( array( 'account_id' => $payload_customer_id ) );
+				$payment_method = Payload\PaymentMethod::get( $payment->payment_method_id );
+				$payment_method->update( array( 'account_id' => $payload_customer_id ) );
+			} catch ( Exception $e ) {
+				$logger = wc_get_logger();
+				$logger->error(
+					'Failed to associate customer with payment: ' . $e->getMessage(),
+					array( 'source' => 'payload-gateway' )
+				);
+				// Don't throw - this is a non-critical operation
+			}
 		}
 	}
 
@@ -286,7 +322,16 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			throw new Exception( 'Missing payment method details' );
 		}
 
-		$payment_method = Payload\PaymentMethod::get( $payment_method_id );
+		try {
+			$payment_method = Payload\PaymentMethod::get( $payment_method_id );
+		} catch ( Exception $e ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'Failed to retrieve payment method when adding: ' . $e->getMessage(),
+				array( 'source' => 'payload-gateway' )
+			);
+			throw new Exception( __( 'Unable to add payment method. Please try again.', 'payload' ) );
+		}
 
 		$token = $this->create_token( $payment_method->data() );
 
@@ -373,7 +418,19 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$payment_method_id = $token->get_token();
 			break;
 		}
-        $payment_method = Payload\PaymentMethod::get( $payment_method_id);
+        try {
+			$payment_method = Payload\PaymentMethod::get( $payment_method_id);
+		} catch ( Exception $e ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'Failed to retrieve payment method for scheduled subscription payment: ' . $e->getMessage(),
+				array( 'source' => 'payload-gateway' )
+			);
+			$renewal_order->add_order_note(
+				__( 'Automatic subscription payment failed: Unable to retrieve payment method.', 'payload' )
+			);
+			return;
+		}
 		$this->create_payment_for_order( $renewal_order, $amount, $payment_method_id );
 
 		$renewal_order->set_payment_method( $token->get_id() );
@@ -407,16 +464,25 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
     $order_id =  $order->get_id();
     // Non virtual goods will be processed manaully after admin review
     if($payment->status  == 'authorized'  ){
-        $payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
-        $user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
-        if(!empty($user_company)){
-            $payment->update( array('attrs' => array( 'billing_company' => $user_company ) ) );
-        }
+        try {
+			$payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
+			$user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
+			if(!empty($user_company)){
+				$payment->update( array('attrs' => array( 'billing_company' => $user_company ) ) );
+			}
+		} catch ( Exception $e ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'Failed to update payment details for order ' . $order_id . ': ' . $e->getMessage(),
+				array( 'source' => 'payload-gateway' )
+			);
+			// Continue processing - this is a non-critical update
+		}
     }
     // Virtual Goods will be completed automatically
     if ($payment->status  == 'processed' && $this->is_virtual($order_id)){
 			$order->payment_complete();
-			
+
     }
 	$order->save();
 
@@ -461,7 +527,16 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 
 		$pm = new Payload\PaymentMethod( array( 'id' => $payment_method['id'] ) );
-		$pm->update( array( 'attrs' => array( '_wp_token_id' => $token->get_id() ) ) );
+		try {
+			$pm->update( array( 'attrs' => array( '_wp_token_id' => $token->get_id() ) ) );
+		} catch ( Exception $e ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'Failed to update payment method attributes: ' . $e->getMessage(),
+				array( 'source' => 'payload-gateway' )
+			);
+			// Continue - this is a non-critical metadata update
+		}
 
 		return $token;
 	}
