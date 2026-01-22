@@ -29,6 +29,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
 
         $this->init_form_fields();
         $this->init_settings();
+        // $this->process_admin_options();
 
 
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
@@ -36,6 +37,27 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
         add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
     }
 
+
+public function admin_options() {
+	parent::admin_options();
+	?>
+	<script type="text/javascript">
+		jQuery(function ($) {
+			var $apiKey  = $('#woocommerce_payload_api_key');
+			var $toggle  = $('#woocommerce_payload_show_key');
+
+			if (!$apiKey.length || !$toggle.length) return;
+
+			function syncType() {
+				$apiKey.attr('type', $toggle.is(':checked') ? 'text' : 'password');
+			}
+
+			$toggle.on('change', syncType);
+			syncType(); // apply on load
+		});
+	</script>
+	<?php
+}
     public function init_form_fields()
     {
         $this->form_fields = array(
@@ -49,6 +71,15 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
                 'title' => __('API Key', 'payload'),
                 'type'  => 'password',
                 'label' => __('API Key', 'payload'),
+
+            ),
+            'show_key' => array(
+                'title'   => __('Show/hide API Key', 'payload'),
+                'type'    => 'checkbox',
+                'label'   => __('Show/hide API Key', 'payload'),
+                'default' => 'no',
+                'class' => 'payload-api-key-field',
+                'onclick' => 'jQuery("#woocommerce_payload_api_key").attr("type", jQuery(this).is(":checked") ? "text" : "password");'
             ),
         );
     }
@@ -100,10 +131,6 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
             setup_payload_api();
             $logger = wc_get_logger();
             $context = ['source' => 'payload-gateway.php']; // shows up as the log "Source"
-            $logger->info('Payment Process started for Order ID: ' . $order_id, $context);
-            $logger->info('Payment Post Details: ' . print_r($_POST, true), $context);
-            $logger->info('Order Type: ' . print_r($order->get_type(), true), $context);
-
 
             payload_card_update_retry_suppressed($order_id, true);
 
@@ -121,7 +148,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
                 $payment_method = Payload\PaymentMethod::get($_POST['payment_method_id']);
 
                 $logger->info('Payment Method  Details' . print_r($payment_method, true), $context);
-                $logger->info('Payment Data  Details' . print_r($_POST, true), $context);
+
 
                 $token = $this->create_token($payment_method->data(), $user_id_from_order, $order);
 
@@ -152,8 +179,6 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
                     $payment_method = Payload\PaymentMethod::get($_POST['payment_method_id']);
                     $token          = $this->create_token($payment_method->data(), $user_id_from_order, $order);
 
-                    $logger->info('Process payment using token: Payment Method  Details' . print_r($payment_method, true), $context);
-                    $logger->info('Process payment using token: Payment Data  Details' . print_r($_POST, true), $context);
                     // Create and set token if subscription
                     if (wcs_order_contains_subscription($order_id)) {
                         $this->update_subscription_order_payment_method($order, $token, $payment_method);
@@ -198,9 +223,6 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
 
                         $payment_method = Payload\PaymentMethod::get($payment->payment_method_id);
                         $payment_method->update(array('account_id' => $payload_customer_id));
-
-                        $logger->info('Process payment pl transaction id: Payment Method  Details' . print_r($payment_method, true), $context);
-                        $logger->info('Process payment pl transaction id: Payment Data  Details' . print_r($_POST, true), $context);
                     }
                 }
 
@@ -218,7 +240,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway
 
 
             // Redirect to the thank you page
-            $logger->info('Payment Process ENDED for Order ID: ' . $order_id, $context);
+
             return array(
                 'result'   => 'success',
                 'redirect' => $this->get_return_url($order),
