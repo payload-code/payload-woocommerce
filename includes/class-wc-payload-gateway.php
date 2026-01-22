@@ -107,129 +107,44 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		<?php
 	}
 
-	// Process the payment
+	/**
+	 * Process the payment for an order.
+	 *
+	 * @param int $order_id The order ID to process payment for.
+	 * @return array Payment result with redirect URL.
+	 * @throws Exception If payment processing fails.
+	 */
 	public function process_payment( $order_id ) {
-	
-
 		try {
 			setup_payload_api();
-            $logger = wc_get_logger();
-                $context = [ 'source' => 'payload-gateway.php' ]; // shows up as the log "Source"
- $logger->info('Payment Process started for Order ID: ' . $order_id, $context);
+			$logger = wc_get_logger();
+			$context = array( 'source' => 'payload-gateway.php' );
+			$logger->info( 'Payment Process started for Order ID: ' . $order_id, $context );
 
 			$order = wc_get_order( $order_id );
-             payload_card_update_retry_suppressed( $order_id,true );
-			
-		
-			$user_id_from_order = $this->get_order_customer_id($order);	
+			payload_card_update_retry_suppressed( $order_id, true );
 
-			// Update subscription payment method if wc subscription exists
-			if (function_exists('wcs_is_subscription') && wcs_is_subscription( $order_id ) ) {
+			$user_id_from_order = $this->get_order_customer_id( $order );
 
-				$payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
-				if ( empty( $payment_method_id ) ) {
-					throw new Exception( 'Missing payment method details' );
-				}
-
-
-				$payment_method = Payload\PaymentMethod::get( $payment_method_id );
-
-				$token = $this->create_token( $payment_method->data() , $user_id_from_order  );
-
-				$parent_order = wc_get_order( $order->get_parent_id() );
-
-				$this->update_subscription_order_payment_method( $parent_order, $token, $payment_method );
-
-				$update_all = isset( $_POST['update_all_subscriptions_payment_method'] ) ? sanitize_text_field( wp_unslash( $_POST['update_all_subscriptions_payment_method'] ) ) : '';
-				if ( $update_all === '1' ) {
-					// Update all subscriptions to the new payment method if selected
-					$subscriptions = wcs_get_users_subscriptions( $user_id_from_order );
-					foreach ( $subscriptions as $subscription ) {
-						$subscription_parent_order = wc_get_order( $subscription->get_parent_id() );
-						$this->update_subscription_order_payment_method( $subscription_parent_order, $token, $payment_method );
-					}
-				}
-
-				return array(
-					'result'   => 'success',
-					'redirect' => $this->get_return_url( $order ),
-				);
+			// Handle subscription payment method updates
+			if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order_id ) ) {
+				return $this->process_subscription_payment_method_update( $order, $user_id_from_order );
 			}
 
-			// Process payment using token
+			// Process payment using token or payment method
 			$post_token = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
 			$post_payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
+
 			if ( ! empty( $post_token ) || ! empty( $post_payment_method_id ) ) {
-				if ( ! empty( $post_token ) ) {
-					$token = WC_Payment_Tokens::get( $post_token );
-				} else {
-					$payment_method = Payload\PaymentMethod::get( $post_payment_method_id );
-					$token          = $this->create_token( $payment_method->data()  , $user_id_from_order);
-
-					// Create and set token if subscription
-					if ( wcs_order_contains_subscription( $order_id ) ) {
-						$this->update_subscription_order_payment_method( $order, $token, $payment_method );
-					}
-				}
-
-				$this->maybe_retry_on_hold_order( $order, $token );
-
-				try {
-					$payment = $this->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
-				} catch ( TransactionDeclined $e ) {
-					wc_add_notice( __( 'Payment error:', 'woothemes' ) . $e->error_description, 'error' );
-					return array(
-						'result' => 'failure',
-					);
-				}
+				$payment = $this->process_token_payment( $order, $post_token, $post_payment_method_id, $user_id_from_order );
+			} else {
+				// Confirm payment processed on client side
+				$payment = $this->process_client_side_payment( $order, $user_id_from_order );
 			}
 
-			// Confirm payment processed on client side
-			else {
+			$payment = $this->handle_order_payment( $order, $payment );
 
-				$transaction_id = isset( $_POST['transactionid'] ) ? sanitize_text_field( wp_unslash( $_POST['transactionid'] ) ) : '';
-				if ( empty( $transaction_id ) ) {
-					throw new Exception( 'Missing payment details' );
-				}
-
-				$payment = Payload\Transaction::get( $transaction_id );
-
-				$amt = $order->get_total();
-
-				if ( $amt != $payment->amount ) {
-					throw new Exception( 'Mismatched Amount' );
-				}
-
-				
-				
-
-				if ( ! $payment->customer_id ) {
-					$payload_customer_id = get_payload_customer_id( $user_id_from_order );
-					if ( $payload_customer_id ) {
-						
-						$payment->update( array( 'customer_id' => $payload_customer_id ) );
-					
-						$payment_method = Payload\PaymentMethod::get( $payment->payment_method_id );
-						$payment_method->update( array( 'account_id' => $payload_customer_id ) );
-
-					}
-				}
-
-				$order->set_transaction_id( $payment->ref_number );
-
-				// Create and set token if subscription
-				if ( class_exists("WC_Subscriptions_Order") && WC_Subscriptions_Order::order_contains_subscription( $order_id ) ) {
-					$token = $this->create_token( $payment->payment_method , $user_id_from_order );
-					$order->add_payment_token( $token );
-				}
-			}
-
-		
-				$payment = $this->handle_order_payment( $order, $payment );
-
-
-			// Redirect to the thank you page
-             $logger->info('Payment Process ENDED for Order ID: ' . $order_id, $context);
+			$logger->info( 'Payment Process ENDED for Order ID: ' . $order_id, $context );
 			return array(
 				'result'   => 'success',
 				'redirect' => $this->get_return_url( $order ),
@@ -237,7 +152,130 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		} finally {
 			payload_card_update_retry_suppressed( $order_id, false );
 		}
+	}
 
+	/**
+	 * Process subscription payment method update.
+	 *
+	 * @param WC_Order $order The order object.
+	 * @param int $user_id_from_order The user ID from the order.
+	 * @return array Payment result with redirect URL.
+	 * @throws Exception If payment method is missing.
+	 */
+	protected function process_subscription_payment_method_update( $order, $user_id_from_order ) {
+		$payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
+		if ( empty( $payment_method_id ) ) {
+			throw new Exception( __( 'Missing payment method details', 'payload' ) );
+		}
+
+		$payment_method = Payload\PaymentMethod::get( $payment_method_id );
+		$token = $this->create_token( $payment_method->data(), $user_id_from_order );
+
+		$parent_order = wc_get_order( $order->get_parent_id() );
+		$this->update_subscription_order_payment_method( $parent_order, $token, $payment_method );
+
+		// Update all subscriptions if requested
+		$update_all = isset( $_POST['update_all_subscriptions_payment_method'] ) ? sanitize_text_field( wp_unslash( $_POST['update_all_subscriptions_payment_method'] ) ) : '';
+		if ( $update_all === '1' ) {
+			$subscriptions = wcs_get_users_subscriptions( $user_id_from_order );
+			foreach ( $subscriptions as $subscription ) {
+				$subscription_parent_order = wc_get_order( $subscription->get_parent_id() );
+				$this->update_subscription_order_payment_method( $subscription_parent_order, $token, $payment_method );
+			}
+		}
+
+		return array(
+			'result'   => 'success',
+			'redirect' => $this->get_return_url( $order ),
+		);
+	}
+
+	/**
+	 * Process payment using a saved token or new payment method.
+	 *
+	 * @param WC_Order $order The order object.
+	 * @param string $post_token The saved token ID from POST.
+	 * @param string $post_payment_method_id The payment method ID from POST.
+	 * @param int $user_id_from_order The user ID from the order.
+	 * @return object Payment transaction object.
+	 * @throws TransactionDeclined If payment is declined.
+	 */
+	protected function process_token_payment( $order, $post_token, $post_payment_method_id, $user_id_from_order ) {
+		if ( ! empty( $post_token ) ) {
+			$token = WC_Payment_Tokens::get( $post_token );
+		} else {
+			$payment_method = Payload\PaymentMethod::get( $post_payment_method_id );
+			$token = $this->create_token( $payment_method->data(), $user_id_from_order );
+
+			// Create and set token if subscription
+			if ( wcs_order_contains_subscription( $order->get_id() ) ) {
+				$this->update_subscription_order_payment_method( $order, $token, $payment_method );
+			}
+		}
+
+		$this->maybe_retry_on_hold_order( $order, $token );
+
+		try {
+			return $this->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
+		} catch ( TransactionDeclined $e ) {
+			wc_add_notice( __( 'Payment error:', 'payload' ) . ' ' . esc_html( $e->error_description ), 'error' );
+			throw $e;
+		}
+	}
+
+	/**
+	 * Process payment that was completed on the client side.
+	 *
+	 * @param WC_Order $order The order object.
+	 * @param int $user_id_from_order The user ID from the order.
+	 * @return object Payment transaction object.
+	 * @throws Exception If transaction ID is missing or amount mismatches.
+	 */
+	protected function process_client_side_payment( $order, $user_id_from_order ) {
+		$transaction_id = isset( $_POST['transactionid'] ) ? sanitize_text_field( wp_unslash( $_POST['transactionid'] ) ) : '';
+		if ( empty( $transaction_id ) ) {
+			throw new Exception( __( 'Missing payment details', 'payload' ) );
+		}
+
+		$payment = Payload\Transaction::get( $transaction_id );
+
+		// Validate payment amount
+		$amt = (float) $order->get_total();
+		$payment_amt = (float) $payment->amount;
+		if ( abs( $amt - $payment_amt ) > 0.01 ) {
+			throw new Exception( __( 'Mismatched Amount', 'payload' ) );
+		}
+
+		// Associate customer with payment if not already set
+		if ( ! $payment->customer_id ) {
+			$this->associate_customer_with_payment( $payment, $user_id_from_order );
+		}
+
+		$order->set_transaction_id( $payment->ref_number );
+
+		// Create and set token if subscription
+		if ( class_exists( 'WC_Subscriptions_Order' ) && WC_Subscriptions_Order::order_contains_subscription( $order->get_id() ) ) {
+			$token = $this->create_token( $payment->payment_method, $user_id_from_order );
+			$order->add_payment_token( $token );
+		}
+
+		return $payment;
+	}
+
+	/**
+	 * Associate a Payload customer with a payment.
+	 *
+	 * @param object $payment The payment transaction object.
+	 * @param int $user_id The WordPress user ID.
+	 */
+	protected function associate_customer_with_payment( $payment, $user_id ) {
+		$payload_customer_id = get_payload_customer_id( $user_id );
+		if ( $payload_customer_id ) {
+			$payment->update( array( 'customer_id' => $payload_customer_id ) );
+
+			$payment_method = Payload\PaymentMethod::get( $payment->payment_method_id );
+			$payment_method->update( array( 'account_id' => $payload_customer_id ) );
+		}
 	}
 
 	public function add_payment_method() {
