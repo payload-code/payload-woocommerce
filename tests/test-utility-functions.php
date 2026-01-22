@@ -2,7 +2,7 @@
 
 use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
-use Mockery;
+use Mockery as  m;
 
 class Test_Utility_Functions extends TestCase {
 
@@ -13,7 +13,14 @@ class Test_Utility_Functions extends TestCase {
         // Reset global state
         $_POST = array();
         $_GET = array();
-    }
+        // Default: assume no existing customer unless test says otherwise
+         if (class_exists('Customer')) {
+        Customer::$shouldFindExisting = true;
+        }
+
+         }
+    
+    
 
     protected function tearDown(): void {
         Monkey\tearDown();
@@ -22,6 +29,9 @@ class Test_Utility_Functions extends TestCase {
     }
 
     public function test_get_payload_customer_id_creates_new_customer() {
+        if (class_exists('Payload\\Customer')) {
+            \Payload\Customer::$shouldFindExisting = false;
+        }
         $user_mock = (object) [
             'ID' => 123,
             'user_email' => 'test@example.com',

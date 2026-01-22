@@ -1,0 +1,75 @@
+name: Release Candidate
+
+on:
+  push:
+    tags:
+      - '*-rc*'
+      - 'v*rc*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Node dependencies (if any)
+        run: |
+          if [ -f package.json ]; then
+            npm ci --prefer-offline --no-audit --no-fund
+          fi
+
+      - name: Build (if package.json contains build)
+        run: |
+          if [ -f package.json ]; then
+            npm run build --if-present
+          fi
+
+      - name: Setup PHP + Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer
+
+      - name: Install Composer dependencies (if any)
+        run: |
+          if [ -f composer.json ]; then
+            composer install --no-dev --no-interaction --prefer-dist --no-progress
+          fi
+
+      - name: Prepare ZIP artifact
+        id: make_zip
+        run: |
+          TAG="${{ github.ref_name }}"
+          OUTDIR=release
+          mkdir -p "$OUTDIR"
+          ZIPFILE="$OUTDIR/${TAG}.zip"
+
+          # Zip the full project (including vendor, build, etc.)
+          # Exclude git metadata, GitHub workflows, and the release folder itself
+          zip -r "$ZIPFILE" . \
+            -x ".git/*" ".github/*" "release/*" "node_modules/*" 
+
+          echo "zip_path=$ZIPFILE" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release + upload ZIP
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: true
+          draft: false
+          files: ${{ steps.make_zip.outputs.zip_path }}

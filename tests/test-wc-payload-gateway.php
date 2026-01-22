@@ -2,7 +2,8 @@
 
 use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
-use Mockery;
+use Mockery as m;
+use Payload\API as pl;
 
 class Test_WC_Payload_Gateway extends TestCase {
 
@@ -17,7 +18,9 @@ class Test_WC_Payload_Gateway extends TestCase {
         $_GET = array();
         
         $this->gateway = new WC_Payload_Gateway();
+
     }
+
 
     protected function tearDown(): void {
         Monkey\tearDown();
@@ -172,10 +175,10 @@ class Test_WC_Payload_Gateway extends TestCase {
             'card' => array(
                 'card_brand' => 'visa',
                 'card_number' => '4111111111111111',
-                'expiry' => '12/2025'
+                'expiry' => '12/'.date('Y', strtotime('+1 year'))
             )
         );
-        
+       
         Monkey\Functions\expect('get_current_user_id')
             ->andReturn(1);
         
@@ -196,7 +199,7 @@ class Test_WC_Payload_Gateway extends TestCase {
             'card' => array(
                 'card_brand' => 'visa',
                 'card_number' => '4111111111111111',
-                'expiry' => '12/2025'
+                'expiry' => '12/'.date('Y', strtotime('+1 year'))
             )
         ));
         

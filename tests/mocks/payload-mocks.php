@@ -34,6 +34,8 @@ namespace Payload {
         public $customer_id;
         public $payment_method_id;
         public $payment_method;
+        public $status; 
+      
         
         public static function get($id) {
             $mock = new self();
@@ -65,12 +67,41 @@ namespace Payload {
     
     class Customer {
         public $id;
-        
+        public $customer;
+         public static $shouldFindExisting = true;
+
         public static function create($data = array()) {
             $mock = new self();
             $mock->id = 'cust_123';
             return $mock;
         }
+        public static function filter_by($data = array()) {
+            $mock = new self();
+            if (!self::$shouldFindExisting) {
+                $mock->id = null;
+                return $mock;
+            }
+
+            $mock->id = 'cust_123';
+            return $mock;
+        }
+       public function first(){
+         if ($this->id === null) {
+            return null;
+        }
+
+        return (object) array( 'id' => $this->id );
+        
+       }
+          public function all(){
+         if ($this->id === null) {
+            return array();
+        }
+
+        return array( (object) array( 'id' => $this->id ) );
+        
+       }
+ 
     }
     
     class ClientToken {

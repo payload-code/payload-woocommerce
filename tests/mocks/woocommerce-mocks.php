@@ -24,7 +24,7 @@ class WC_Payment_Gateway {
 
 class WC_Payment_Token_CC {
     private $data = array();
-    
+    public function set_data($data) { $this->data = $data; }
     public function set_token($token) { $this->data['token'] = $token; }
     public function set_gateway_id($id) { $this->data['gateway_id'] = $id; }
     public function set_card_type($type) { $this->data['card_type'] = $type; }
@@ -35,6 +35,10 @@ class WC_Payment_Token_CC {
     
     public function get_token() { return $this->data['token'] ?? ''; }
     public function get_id() { return $this->data['id'] ?? 1; }
+    public function get_user_id() { return $this->data['user_id'] ?? 0; }
+    public function get_last4() { return $this->data['last4'] ?? ''; }
+    public function get_expiry_month() { return $this->data['expiry_month'] ?? ''; }
+    public function get_expiry_year() { return $this->data['expiry_year'] ?? ''; }
     
     public function save() { $this->data['id'] = 1; return true; }
 }
@@ -44,6 +48,11 @@ class WC_Payment_Tokens {
         $token = new WC_Payment_Token_CC();
         $token->set_token('pm_test_token');
         return $token;
+    }
+    public static function get_customer_tokens($user_id, $gateway_id) {
+        $token = new WC_Payment_Token_CC();
+        $token->set_token('pm_test_token');
+        return array($token);
     }
 }
 
@@ -75,6 +84,7 @@ class WC_Order {
     public function get_payment_method() { return $this->data['payment_method']; }
     public function get_payment_method_title() { return $this->data['payment_method_title']; }
     public function get_payment_tokens() { return array(1); }
+    public function get_items() { return array(); }
     
     public function set_transaction_id($id) { $this->data['transaction_id'] = $id; }
     public function set_payment_method($method) { $this->data['payment_method'] = $method; }

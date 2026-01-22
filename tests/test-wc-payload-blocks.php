@@ -2,7 +2,7 @@
 
 use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
-use Mockery;
+use Mockery as m;
 
 class Test_WC_Payload_Blocks extends TestCase {
 
