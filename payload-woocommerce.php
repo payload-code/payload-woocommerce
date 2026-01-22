@@ -82,6 +82,13 @@ add_action( 'profile_update', function( $user_id, $old_user ) {
 
 
 add_action( 'plugins_loaded', 'woocommerce_payload', 0 );
+/**
+ * Initialize WooCommerce Payload integration.
+ *
+ * Loads the Payload payment gateway class if WooCommerce is available.
+ *
+ * @since 1.0.0
+ */
 function woocommerce_payload() {
 	if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
 		return; // if the WC payment gateway class
@@ -92,6 +99,13 @@ function woocommerce_payload() {
 
 
 add_filter( 'woocommerce_payment_gateways', 'add_payload_gateway' );
+/**
+ * Add Payload gateway to WooCommerce payment gateways.
+ *
+ * @since 1.0.0
+ * @param array $gateways Array of WooCommerce payment gateway classes.
+ * @return array Modified array of payment gateways including Payload.
+ */
 function add_payload_gateway( $gateways ) {
 	$gateways[] = 'WC_Payload_Gateway';
 	return $gateways;
@@ -101,6 +115,11 @@ function add_payload_gateway( $gateways ) {
  * Custom function to declare compatibility with cart_checkout_blocks feature
  */
 add_action( 'before_woocommerce_init', 'declare_cart_checkout_blocks_compatibility' );
+/**
+ * Declare compatibility with WooCommerce cart and checkout blocks.
+ *
+ * @since 1.0.0
+ */
 function declare_cart_checkout_blocks_compatibility() {
 	// Check if the required class exists
 	if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
@@ -111,6 +130,11 @@ function declare_cart_checkout_blocks_compatibility() {
 
 // Hook to the 'woocommerce_blocks_loaded' action to register payment method type
 add_action( 'woocommerce_blocks_loaded', 'payload_register_order_approval_payment_method_type' );
+/**
+ * Register Payload payment method type for WooCommerce Blocks.
+ *
+ * @since 1.0.0
+ */
 function payload_register_order_approval_payment_method_type() {
 	// Check if the required class exists
 	if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
@@ -221,6 +245,16 @@ add_action('woocommerce_checkout_order_processed',function ($order_id, $posted_d
 }, 10, 3);
 
 
+/**
+ * Get or create a Payload customer ID for a WordPress user.
+ *
+ * Retrieves the Payload customer ID from user meta, or creates a new Payload
+ * customer if one doesn't exist. Searches by email first, then creates if needed.
+ *
+ * @since 1.0.0
+ * @param int|null $user_id WordPress user ID. If null, uses current user.
+ * @return string|null Payload customer ID or null if unable to create.
+ */
 function get_payload_customer_id($user_id=null) {
 	$payload_customer_id = null;
     if($user_id){
@@ -281,6 +315,15 @@ function get_payload_customer_id($user_id=null) {
 	return $payload_customer_id ?: null;
 }
 
+/**
+ * Generate Payload client token for payment or payment method forms.
+ *
+ * REST API callback that creates a client token for payment processing.
+ *
+ * @since 1.0.0
+ * @param array $data Request data from REST API.
+ * @return array Array containing client_token ID.
+ */
 function get_intent( $data ) {
 	setup_payload_api();
 
@@ -329,6 +372,13 @@ add_action(
 	}
 );
 
+/**
+ * Initialize and configure Payload API settings.
+ *
+ * Sets up API key and URL from WooCommerce settings and environment variables.
+ *
+ * @since 1.0.0
+ */
 function setup_payload_api() {
 	$settings = get_option( 'woocommerce_payload_settings', array() );
 
@@ -348,7 +398,17 @@ function setup_payload_api() {
 }
 
 add_filter( 'woocommerce_subscription_payment_method_to_display', 'payload_subscription_payment_method_to_display', 10, 3 );
-
+/**
+ * Display payment method for WooCommerce subscriptions.
+ *
+ * Gets the payment method title from the parent order for subscriptions.
+ *
+ * @since 1.0.0
+ * @param string           $label        Default payment method label.
+ * @param WC_Subscription  $subscription Subscription object.
+ * @param string           $context      Display context.
+ * @return string Payment method title from parent order or default message.
+ */
 function payload_subscription_payment_method_to_display( $label, $subscription, $context ) {
 
 	$parent_order = wc_get_order( $subscription->get_parent_id() );
@@ -360,7 +420,16 @@ function payload_subscription_payment_method_to_display( $label, $subscription, 
 
 add_action( 'woocommerce_new_payment_token', 'payload_retry_orders_after_card_update', 10, 2 );
 add_action( 'woocommerce_payment_token_set_default', 'payload_retry_orders_after_card_update', 10, 2 );
-
+/**
+ * Retry pending/on-hold orders after customer updates payment card.
+ *
+ * Automatically attempts to process failed orders when a new payment method is added
+ * or set as default. Includes order-scoped suppression to prevent duplicate retries.
+ *
+ * @since 1.0.0
+ * @param int                      $token_id Payment token ID.
+ * @param WC_Payment_Token|null    $token    Payment token object.
+ */
 function payload_retry_orders_after_card_update( $token_id, $token = null ) {
 
 
@@ -448,7 +517,15 @@ function payload_retry_orders_after_card_update( $token_id, $token = null ) {
     }
 }
 
-
+/**
+ * Get an instance of the Payload gateway.
+ *
+ * Retrieves the Payload gateway instance from WooCommerce payment gateways,
+ * or creates a new instance if necessary.
+ *
+ * @since 1.0.0
+ * @return WC_Payload_Gateway|null Gateway instance or null if unavailable.
+ */
 function payload_get_gateway_instance() {
 	if ( function_exists( 'WC' ) ) {
 		$payment_gateways = WC()->payment_gateways();
@@ -467,6 +544,17 @@ function payload_get_gateway_instance() {
 	return null;
 }
 
+/**
+ * Check or set suppression status for card update retry on an order.
+ *
+ * Uses a static array to track which orders have already been processed during
+ * card update retry to prevent infinite loops or duplicate processing.
+ *
+ * @since 1.0.0
+ * @param int|null  $order_id Order ID to check/set suppression for.
+ * @param bool|null $status   If provided, sets suppression status (true=suppress, false=unsuppress).
+ * @return bool True if order retry is suppressed, false otherwise.
+ */
 function payload_card_update_retry_suppressed( $order_id = null, $status = null ) {
 	static $suppressed_orders = [];
 
