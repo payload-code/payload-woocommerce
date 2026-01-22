@@ -17,8 +17,16 @@ defined( 'ABSPATH' ) || exit;
 
 require_once 'vendor/autoload.php';
 use Payload\API as pl;
-// Force a Company field to show on the billing section
-add_action( 'woocommerce_after_checkout_billing_form', function( $checkout ) {
+
+/**
+ * Display billing company field on checkout form.
+ *
+ * Adds a company name field to the WooCommerce billing section during checkout.
+ *
+ * @since 1.0.0
+ * @param WC_Checkout $checkout WooCommerce checkout object.
+ */
+function payload_display_billing_company_field( $checkout ) {
 
     echo '<div class="form-row form-row-wide" id="billing_company_custom_wrapper">';
 
@@ -35,9 +43,20 @@ add_action( 'woocommerce_after_checkout_billing_form', function( $checkout ) {
     );
 
     echo '</div>';
-}, 10, 2 );
-// Save billing_company to the order and user meta
-add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
+}
+// Force a Company field to show on the billing section
+add_action( 'woocommerce_after_checkout_billing_form', 'payload_display_billing_company_field', 10, 2 );
+/**
+ * Save billing company to order and user meta during checkout.
+ *
+ * Captures the billing company field and saves it to both the order
+ * and the user meta (if logged in).
+ *
+ * @since 1.0.0
+ * @param WC_Order $order Order object being created.
+ * @param array    $data  Posted checkout data.
+ */
+function payload_save_billing_company_to_order( $order, $data ) {
 
     if ( isset( $_POST['billing_company'] ) && ! empty( $_POST['billing_company'] ) ) {
         $company = sanitize_text_field( wp_unslash( $_POST['billing_company'] ) );
@@ -51,9 +70,21 @@ add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
         }
     }
 
-}, 10, 2 );
+}
+// Save billing_company to the order and user meta
+add_action( 'woocommerce_checkout_create_order', 'payload_save_billing_company_to_order', 10, 2 );
 
-add_action( 'profile_update', function( $user_id, $old_user ) {
+/**
+ * Update Payload customer when WordPress user profile is updated.
+ *
+ * Syncs user profile changes (email, display name, company) to the corresponding
+ * Payload customer record.
+ *
+ * @since 1.0.0
+ * @param int     $user_id  User ID being updated.
+ * @param WP_User $old_user Previous user data object.
+ */
+function payload_sync_customer_on_profile_update( $user_id, $old_user ) {
     setup_payload_api();
     $user = get_userdata( $user_id );
 
@@ -87,7 +118,9 @@ add_action( 'profile_update', function( $user_id, $old_user ) {
         }
 
 
-}, 10, 2 );
+}
+
+add_action( 'profile_update', 'payload_sync_customer_on_profile_update', 10, 2 );
 
 
 add_action( 'plugins_loaded', 'woocommerce_payload', 0 );
@@ -156,14 +189,33 @@ function payload_register_order_approval_payment_method_type() {
 	// Hook the registration function to the 'woocommerce_blocks_payment_method_type_registration' action
 	add_action(
 		'woocommerce_blocks_payment_method_type_registration',
-		function ( Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry ) {
-			// Register an instance of WC_Payload_Blocks
-			$payment_method_registry->register( new WC_Payload_Blocks() );
-		}
+		'payload_register_blocks_payment_method'
 	);
 }
-// Auto-complete orders with only virtual/downloadable products
-add_action( 'woocommerce_payment_complete', function( $order_id ) {
+
+/**
+ * Register Payload Blocks payment method with WooCommerce payment registry.
+ *
+ * Callback function that registers the WC_Payload_Blocks instance with
+ * WooCommerce Blocks payment method registry.
+ *
+ * @since 1.0.0
+ * @param Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry Payment method registry instance.
+ */
+function payload_register_blocks_payment_method( $payment_method_registry ) {
+	// Register an instance of WC_Payload_Blocks
+	$payment_method_registry->register( new WC_Payload_Blocks() );
+}
+/**
+ * Auto-complete orders containing only virtual/downloadable products.
+ *
+ * Automatically marks orders as completed when payment is received and all
+ * products in the order are virtual or downloadable (no physical shipping needed).
+ *
+ * @since 1.0.0
+ * @param int $order_id Order ID that received payment.
+ */
+function payload_autocomplete_virtual_orders( $order_id ) {
 
     $order = wc_get_order( $order_id );
 
@@ -184,13 +236,23 @@ add_action( 'woocommerce_payment_complete', function( $order_id ) {
         $order->update_status( 'completed', 'Order auto-completed because it contains only virtual products.' );
     }
 
-});
+}
+// Auto-complete orders with only virtual/downloadable products
+add_action( 'woocommerce_payment_complete', 'payload_autocomplete_virtual_orders' );
 
 /**
  * Plugin Name: Admin Flash Notice Example
  */
 
-add_action('admin_init', function () {
+/**
+ * Handle admin notice trigger from URL parameter.
+ *
+ * Checks for the my_notice=1 URL parameter and sets a transient to display
+ * a flash notice on the next page load.
+ *
+ * @since 1.0.0
+ */
+function payload_handle_admin_notice_trigger() {
 	// Example trigger: append ?my_notice=1 to any wp-admin URL
 	if (!current_user_can('manage_options')) return;
 
@@ -201,9 +263,19 @@ add_action('admin_init', function () {
 			'type'    => 'success', // success | warning | error | info
 		], 60); // seconds
 	}
-});
+}
 
-add_action('admin_notices', function () {
+add_action('admin_init', 'payload_handle_admin_notice_trigger');
+
+/**
+ * Display admin flash notices from transient storage.
+ *
+ * Checks for and displays flash notices stored in transients, then deletes
+ * the transient after displaying.
+ *
+ * @since 1.0.0
+ */
+function payload_display_admin_flash_notices() {
 	if (!current_user_can('manage_options')) return;
 
 	$key  = 'my_admin_flash_notice_' . get_current_user_id();
@@ -224,8 +296,19 @@ add_action('admin_notices', function () {
 		esc_attr($type),
 		esc_html($message)
 	);
-});
-add_action('woocommerce_created_customer', function ($customer_id) {
+}
+
+add_action('admin_notices', 'payload_display_admin_flash_notices');
+/**
+ * Create Payload customer record when WooCommerce customer is created.
+ *
+ * Automatically creates a corresponding Payload customer when a new WooCommerce
+ * customer account is created, if one doesn't already exist.
+ *
+ * @since 1.0.0
+ * @param int $customer_id WooCommerce customer ID.
+ */
+function payload_create_customer_on_registration( $customer_id ) {
        if( ! $customer_id ) {
         return;
     }
@@ -235,9 +318,23 @@ add_action('woocommerce_created_customer', function ($customer_id) {
     setup_payload_api();
     // User NOW exists
       get_payload_customer_id($customer_id);
-});
+}
 
-add_action('woocommerce_checkout_order_processed',function ($order_id, $posted_data, $order) {
+add_action('woocommerce_created_customer', 'payload_create_customer_on_registration');
+
+/**
+ * Ensure Payload customer record exists after checkout order is processed.
+ *
+ * Creates a Payload customer record for new users during checkout if one doesn't
+ * already exist. This handles cases where the customer was created during the
+ * checkout process.
+ *
+ * @since 1.0.0
+ * @param int      $order_id     Order ID being processed.
+ * @param array    $posted_data  Posted checkout data.
+ * @param WC_Order $order        Order object.
+ */
+function payload_ensure_customer_after_checkout( $order_id, $posted_data, $order ) {
     // When new user is created it wasnt getting Payload Customer ID only existing users get customer id
     // User NOW exists
 
@@ -251,7 +348,9 @@ add_action('woocommerce_checkout_order_processed',function ($order_id, $posted_d
 
     setup_payload_api();
     get_payload_customer_id($customer_id);
-}, 10, 3);
+}
+
+add_action('woocommerce_checkout_order_processed', 'payload_ensure_customer_after_checkout', 10, 3);
 
 
 /**
@@ -393,22 +492,40 @@ function get_intent( $data ) {
 	}
 }
 
-add_action(
-	'rest_api_init',
-	function () {
-		register_rest_route(
-			'wc/v3',
-			'payload_client_token',
-			array(
-				'methods'             => 'GET',
-				'callback'            => 'get_intent',
-				'permission_callback' => function() {
-					return is_user_logged_in();
-				},
-			)
-		);
-	}
-);
+/**
+ * Register REST API endpoint for Payload client token generation.
+ *
+ * Registers the /wc/v3/payload_client_token endpoint for retrieving client tokens
+ * used in payment forms.
+ *
+ * @since 1.0.0
+ */
+function payload_register_rest_api_routes() {
+	register_rest_route(
+		'wc/v3',
+		'payload_client_token',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'get_intent',
+			'permission_callback' => 'payload_rest_permission_check',
+		)
+	);
+}
+
+/**
+ * Permission callback for Payload REST API endpoints.
+ *
+ * Checks if the current user is logged in before allowing access to
+ * Payload REST API endpoints.
+ *
+ * @since 1.0.0
+ * @return bool True if user is logged in, false otherwise.
+ */
+function payload_rest_permission_check() {
+	return is_user_logged_in();
+}
+
+add_action( 'rest_api_init', 'payload_register_rest_api_routes' );
 
 /**
  * Initialize and configure Payload API settings.
