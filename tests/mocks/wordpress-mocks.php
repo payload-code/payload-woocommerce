@@ -105,3 +105,111 @@ if (!function_exists('wc_get_endpoint_url')) {
         return 'http://example.com/my-account/' . $endpoint . '/';
     }
 }
+
+if (!function_exists('wc_get_logger')) {
+    function wc_get_logger() {
+        static $logger = null;
+        if ($logger === null) {
+            $logger = new class {
+                public function error($message, $context = array()) { return true; }
+                public function warning($message, $context = array()) { return true; }
+                public function info($message, $context = array()) { return true; }
+                public function debug($message, $context = array()) { return true; }
+            };
+        }
+        return $logger;
+    }
+}
+
+if (!function_exists('sanitize_text_field')) {
+    function sanitize_text_field($str) {
+        return strip_tags($str);
+    }
+}
+
+if (!function_exists('wp_unslash')) {
+    function wp_unslash($value) {
+        return is_string($value) ? stripslashes($value) : $value;
+    }
+}
+
+if (!function_exists('get_users')) {
+    function get_users($args = array()) {
+        return array();
+    }
+}
+
+if (!function_exists('get_user_by')) {
+    function get_user_by($field, $value) {
+        return (object) [
+            'ID' => $value,
+            'user_email' => 'test@example.com',
+            'user_nicename' => 'testuser',
+            'first_name' => 'Test',
+            'last_name' => 'User'
+        ];
+    }
+}
+
+if (!function_exists('get_userdata')) {
+    function get_userdata($user_id) {
+        return (object) [
+            'ID' => $user_id,
+            'user_email' => 'test@example.com',
+            'user_nicename' => 'testuser',
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'data' => (object) [
+                'user_email' => 'test@example.com'
+            ]
+        ];
+    }
+}
+
+if (!function_exists('is_user_logged_in')) {
+    function is_user_logged_in() {
+        return true;
+    }
+}
+
+if (!function_exists('current_user_can')) {
+    function current_user_can($capability) {
+        return true;
+    }
+}
+
+if (!function_exists('set_transient')) {
+    function set_transient($transient, $value, $expiration = 0) {
+        return true;
+    }
+}
+
+if (!function_exists('get_transient')) {
+    function get_transient($transient) {
+        return false;
+    }
+}
+
+if (!function_exists('delete_transient')) {
+    function delete_transient($transient) {
+        return true;
+    }
+}
+
+if (!function_exists('esc_html')) {
+    function esc_html($text) {
+        return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('esc_attr')) {
+    function esc_attr($text) {
+        return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('esc_url')) {
+    function esc_url($url) {
+        return filter_var($url, FILTER_SANITIZE_URL);
+    }
+}

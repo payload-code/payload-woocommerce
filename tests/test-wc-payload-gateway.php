@@ -248,13 +248,256 @@ class Test_WC_Payload_Gateway extends TestCase {
         $order = new WC_Order(123);
         $token = new WC_Payment_Token_CC();
         $token->set_token('pm_123');
-        
+
         $payment_method_mock = Mockery::mock();
         $payment_method_mock->description = 'Visa ending in 1111';
-        
+
         $this->gateway->update_subscription_order_payment_method($order, $token, $payment_method_mock);
-        
+
         $this->assertEquals($token->get_id(), $order->get_payment_method());
         $this->assertEquals('Visa ending in 1111', $order->get_payment_method_title());
     }
+
+    public function test_is_virtual_returns_true_for_all_virtual_products() {
+        $product_mock = Mockery::mock();
+        $product_mock->shouldReceive('is_virtual')->andReturn(true);
+
+        $item_mock = Mockery::mock();
+        $item_mock->shouldReceive('get_product')->andReturn($product_mock);
+
+        $order_mock = Mockery::mock('WC_Order');
+        $order_mock->shouldReceive('get_items')->andReturn(array($item_mock));
+
+        Monkey\Functions\expect('wc_get_order')
+            ->with(123)
+            ->andReturn($order_mock);
+
+        $result = $this->gateway->is_virtual(123);
+
+        $this->assertTrue($result);
+    }
+
+    public function test_is_virtual_returns_false_for_non_virtual_products() {
+        $product_mock = Mockery::mock();
+        $product_mock->shouldReceive('is_virtual')->andReturn(false);
+        $product_mock->shouldReceive('is_downloadable')->andReturn(false);
+
+        $item_mock = Mockery::mock();
+        $item_mock->shouldReceive('get_product')->andReturn($product_mock);
+
+        $order_mock = Mockery::mock('WC_Order');
+        $order_mock->shouldReceive('get_items')->andReturn(array($item_mock));
+
+        Monkey\Functions\expect('wc_get_order')
+            ->with(123)
+            ->andReturn($order_mock);
+
+        $result = $this->gateway->is_virtual(123);
+
+        $this->assertFalse($result);
+    }
+
+    public function test_is_virtual_handles_null_product() {
+        $item_mock = Mockery::mock();
+        $item_mock->shouldReceive('get_product')->andReturn(null);
+
+        $order_mock = Mockery::mock('WC_Order');
+        $order_mock->shouldReceive('get_items')->andReturn(array($item_mock));
+
+        Monkey\Functions\expect('wc_get_order')
+            ->with(123)
+            ->andReturn($order_mock);
+
+        $result = $this->gateway->is_virtual(123);
+
+        $this->assertFalse($result);
+    }
+
+    public function test_process_subscription_payment_method_update_success() {
+        $_POST = array('payment_method_id' => 'pm_123');
+
+        $order_mock = Mockery::mock('WC_Order');
+        $order_mock->shouldReceive('get_id')->andReturn(123);
+        $order_mock->shouldReceive('update_meta_data')->with('_payload_payment_method_id', 'pm_123');
+        $order_mock->shouldReceive('save');
+        $order_mock->shouldReceive('get_checkout_order_received_url')->andReturn('http://example.com/order-received/123/');
+        $order_mock->shouldReceive('get_parent_id')->andReturn(456);
+
+        $parent_order_mock = Mockery::mock('WC_Order');
+        $parent_order_mock->shouldReceive('update_meta_data')->with('_payload_payment_method_id', 'pm_123');
+        $parent_order_mock->shouldReceive('set_payment_method')->with(Mockery::any());
+        $parent_order_mock->shouldReceive('set_payment_method_title')->with(Mockery::type('string'));
+        $parent_order_mock->shouldReceive('save')->andReturn(true);
+        $parent_order_mock->shouldReceive('get_status')->andReturn('on-hold');
+
+        Monkey\Functions\expect('get_current_user_id')->andReturn(1);
+        Monkey\Functions\expect('wc_get_order')->with(456)->andReturn($parent_order_mock);
+
+        // Test the protected method via reflection
+        // The existing Payload\PaymentMethod mock will handle PaymentMethod::get() call
+        $reflection = new ReflectionClass($this->gateway);
+        $method = $reflection->getMethod('process_subscription_payment_method_update');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->gateway, $order_mock, 1);
+
+        $this->assertEquals('success', $result['result']);
+    }
+
+    public function test_process_token_payment_with_saved_token() {
+        $_POST = array('token' => '1');
+
+        $order_mock = Mockery::mock('WC_Order');
+        $order_mock->shouldReceive('get_id')->andReturn(123);
+        $order_mock->shouldReceive('get_total')->andReturn(100.00);
+        $order_mock->shouldReceive('get_checkout_order_received_url')->andReturn('http://example.com/order-received/123/');
+        $order_mock->shouldReceive('update_meta_data')->andReturnSelf();
+        $order_mock->shouldReceive('set_transaction_id')->with(Mockery::type('string'))->andReturnSelf();
+        $order_mock->shouldReceive('payment_complete')->andReturn(true);
+        $order_mock->shouldReceive('save')->andReturn(true);
+
+        $token_mock = Mockery::mock('WC_Payment_Token_CC');
+        $token_mock->shouldReceive('get_id')->andReturn(1);
+        $token_mock->shouldReceive('get_user_id')->andReturn(1);
+        $token_mock->shouldReceive('get_token')->andReturn('pm_123');
+
+        Monkey\Functions\expect('get_user_meta')
+            ->with(1, PAYLOAD_CUSTOMER_ID_META_KEY, true)
+            ->andReturn('cust_123');
+
+        // WC_Payment_Tokens::get() is already mocked in woocommerce-mocks.php
+        // and will return a token mock
+
+        // Test the protected method via reflection
+        $reflection = new ReflectionClass($this->gateway);
+        $method = $reflection->getMethod('process_token_payment');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->gateway, $order_mock, '1', '', 1);
+
+        // This method returns a transaction object, not an array
+        $this->assertInstanceOf('Payload\Transaction', $result);
+        $this->assertNotEmpty($result->ref_number);
+    }
+
+    public function test_process_client_side_payment_validates_transaction_id() {
+
+        $_POST = array('transactionid' => 'txn_123');
+
+        $order_mock = Mockery::mock('WC_Order');
+        $order_mock->shouldReceive('get_id')->andReturn(123);
+        $order_mock->shouldReceive('get_total')->andReturn(100.00);
+        $order_mock->shouldReceive('get_user_id')->andReturn(1);
+        $order_mock->shouldReceive('get_customer_id')->andReturn(1);
+        $order_mock->shouldReceive('get_checkout_order_received_url')->andReturn('http://example.com/order-received/123/');
+        $order_mock->shouldReceive('update_meta_data');
+        $order_mock->shouldReceive('save');
+        $order_mock->shouldReceive('set_transaction_id')->with(Mockery::type('string'));
+
+        $subscription_order_mock = Mockery::mock('alias:WC_Subscriptions_Order');
+        $subscription_order_mock->shouldReceive('order_contains_subscription')
+            ->with(123)
+            ->andReturn(false);
+
+        // Test the protected method via reflection
+        $reflection = new ReflectionClass($this->gateway);
+        $method = $reflection->getMethod('process_client_side_payment');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->gateway, $order_mock, 1);
+
+        $this->assertEquals('processed', $result->status);
+    }
+
+    public function test_associate_customer_with_payment_success() {
+        $payment_mock = Mockery::mock();
+        $payment_mock->customer_id = null;
+        $payment_mock->payment_method_id = 'pm_test';
+        $payment_mock->shouldReceive('update')
+            ->with(array('customer_id' => 'cust_123'))
+            ->andReturnUsing(function($data) use ($payment_mock) {
+                $payment_mock->customer_id = $data['customer_id'];
+                return true;
+            });
+
+        Monkey\Functions\expect('get_user_meta')
+            ->with(1, 'payload_customer_id', true)
+            ->andReturn('cust_123');
+
+        $logger_mock = Mockery::mock();
+        $logger_mock->shouldReceive('info')->andReturn(true);
+        $logger_mock->shouldReceive('error')->andReturn(true);
+        Monkey\Functions\expect('wc_get_logger')->andReturn($logger_mock);
+
+        // Test the protected method via reflection
+        $reflection = new ReflectionClass($this->gateway);
+        $method = $reflection->getMethod('associate_customer_with_payment');
+        $method->setAccessible(true);
+
+        $method->invoke($this->gateway, $payment_mock, 1);
+
+        $this->assertEquals('cust_123', $payment_mock->customer_id);
+    }
+
+    public function test_scheduled_subscription_payment_with_valid_token() {
+      $product_mock = Mockery::mock();
+      $product_mock->shouldReceive('is_virtual')->andReturn(true);
+
+      $item_mock = Mockery::mock();
+      $item_mock->shouldReceive('get_product')->andReturn($product_mock);
+      $item_mock->shouldReceive('get_name')->andReturn('test');
+
+        $order_mock = Mockery::mock('WC_Order');
+        $order_mock->shouldReceive('get_id')->andReturn(123);
+        $order_mock->shouldReceive('get_total')->andReturn(50.00);
+        $order_mock->shouldReceive('get_user_id')->andReturn(1);
+        $order_mock->shouldReceive('get_customer_id')->andReturn(1);
+        $order_mock->shouldReceive('get_status')->andReturn('pending');
+        $order_mock->shouldReceive('get_meta')
+            ->with('_payload_payment_method_id', true)
+            ->andReturn('pm_123');
+        $order_mock->shouldReceive('payment_complete')->once();
+        $order_mock->shouldReceive('set_transaction_id')->with(Mockery::type('string'));
+        $order_mock->shouldReceive('save')->andReturn(true);
+        $order_mock->shouldReceive('set_payment_method')->with(Mockery::any());
+        $order_mock->shouldReceive('set_payment_method_title')->with(Mockery::type('string'));
+        $order_mock->shouldReceive('add_order_note')->andReturn(true);
+        $order_mock->shouldReceive('get_items')->andReturn(array($item_mock));
+
+        $token_mock = Mockery::mock('WC_Payment_Token_CC');
+        $token_mock->shouldReceive('get_token')->andReturn('pm_123');
+        $token_mock->shouldReceive('get_id')->andReturn(111);
+
+        $subscription_mock = Mockery::mock('WC_Subscription');
+        $subscription_mock->shouldReceive('get_parent_id')->andReturn(456);
+
+        $parent_order_mock = Mockery::mock('WC_Order');
+        $parent_order_mock->shouldReceive('get_payment_method')->andReturn('111');
+        $parent_order_mock->shouldReceive('get_payment_tokens')->andReturn(array('111'));
+
+        Monkey\Functions\expect('setup_payload_api')->once();
+        Monkey\Functions\expect('wcs_get_subscriptions_for_order')
+            ->with(123, array('order_type' => 'any'))
+            ->andReturn(array('sub_123' => $subscription_mock));
+
+        Monkey\Functions\expect('wc_get_order')
+            ->andReturnUsing(function($order_id) use ($order_mock, $parent_order_mock) {
+                if ($order_id == 123) return $order_mock;
+                if ($order_id == 456) return $parent_order_mock;
+                return null;
+            });
+
+        $logger_mock = Mockery::mock();
+        $logger_mock->shouldReceive('info')->andReturn(true);
+        $logger_mock->shouldReceive('error')->andReturn(true);
+        Monkey\Functions\expect('wc_get_logger')->andReturn($logger_mock);
+
+        // WC_Payment_Tokens::get_customer_tokens() is already mocked in woocommerce-mocks.php
+        // and will return array with a token
+
+        $this->gateway->scheduled_subscription_payment(50.00, $order_mock);
+
+        $this->assertTrue(true);
+    }
+
 }

@@ -349,7 +349,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	}
 
 	public function scheduled_subscription_payment( $amount, $renewal_order, $retry = true, $previous_error = false ) {
-		setup_payload_api();
+    setup_payload_api();
 
 		$status = $renewal_order->get_status();
 
@@ -358,6 +358,20 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
 
 		$subscriptions     = wcs_get_subscriptions_for_order( $renewal_order->get_id(), array( 'order_type' => 'any' ) );
+
+		if ( empty( $subscriptions ) ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'No subscriptions found for renewal order ' . $renewal_order->get_id(),
+				array( 'source' => 'payload-gateway' )
+			);
+			$renewal_order->update_status(
+				'failed',
+				__( 'Automatic subscription payment failed: No subscription found for renewal order.', 'payload' )
+			);
+			return;
+		}
+
 		$payment_method_id = null;
 		foreach ( $subscriptions as $subscription_id => $subscription ) {
 			$parent_order = wc_get_order( $subscription->get_parent_id() );
@@ -366,11 +380,6 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$token = WC_Payment_Tokens::get( $token_id );
 
             if ( is_null( $token ) ) {
-                // Legacy support from version <=1.0.0
-                $log = wc_get_logger();
-                $tokens = $parent_order->get_payment_tokens();
-
-                if ( count( $tokens ) === 0 ) {
                     $log->error( 'No available payment method for order ' . $parent_order->get_id(), array( 'source' => 'payload' ) );
                     
                     $note = __( 'Automatic subscription payment failed: No payment method on file for this account.', 'payload' );
@@ -392,28 +401,6 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
                     
                     return;
                 }
-
-                $token = WC_Payment_Tokens::get( $tokens[0] );
-
-                if ( is_null( $token ) ) {
-                    $log->error( 'Invalid payment token for order ' . $parent_order->get_id(), array( 'source' => 'payload' ) );
-                    
-                    $note = __( 'Automatic subscription payment failed: Invalid payment method on file.', 'payload' );
-                    $renewal_order->add_order_note( $note );
-                    $renewal_order->save();
-                    
-                    $admin_email = get_option( 'admin_email' );
-                    if ( $admin_email ) {
-                        wp_mail(
-                            $admin_email,
-                            sprintf( __( 'Subscription Payment Failed - Order #%s', 'payload' ), $renewal_order->get_id() ),
-                            sprintf( __( "Automatic subscription payment could not be processed for order #%s.\n\nReason: Invalid payment method on file.", 'payload' ), $renewal_order->get_id() )
-                        );
-                    }
-                    
-                    return;
-                }
-            }
 
 			$payment_method_id = $token->get_token();
 			break;
@@ -462,8 +449,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	public function handle_order_payment( $order, $payment ) {
     $order->set_transaction_id( $payment->ref_number );
     $order_id =  $order->get_id();
+
     // Non virtual goods will be processed manaully after admin review
-    if ( $payment->status === 'authorized' ) {
+    if ( $payment->status === 'authorized' && $this->is_virtual($order_id) ) {
         try {
 			$payment->update( array('order_number'=>strval( $order_id),  'status' => 'processed', "description"=> " Order Item(s): ".$this->get_order_product_name($order_id) ) );
 			$user_company = get_user_meta( $order->get_user_id(), 'billing_company', true );
@@ -479,8 +467,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			// Continue processing - this is a non-critical update
 		}
     }
-    // Virtual Goods will be completed automatically
-    if ( $payment->status === 'processed' && $this->is_virtual($order_id) ) {
+    // Set completed automatically if transaction is fully processed
+    if ( $payment->status === 'processed' ) {
 			$order->payment_complete();
 
     }

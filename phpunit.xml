@@ -14,6 +14,8 @@
             <file>./tests/test-wc-payload-gateway.php</file>
             <file>./tests/test-wc-payload-blocks.php</file>
             <file>./tests/test-utility-functions.php</file>
+            <file>./tests/test-integration-payment-flows.php</file>
+            <file>./tests/test-error-handling.php</file>
         </testsuite>
     </testsuites>
 

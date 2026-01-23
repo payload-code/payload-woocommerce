@@ -267,7 +267,10 @@ function payload_autocomplete_virtual_orders( $order_id ) {
 add_action( 'woocommerce_payment_complete', 'payload_autocomplete_virtual_orders' );
 
 /**
- * Plugin Name: Admin Flash Notice Example
+ * Admin Flash Notice Functionality
+ *
+ * Provides transient-based flash notice support for displaying
+ * temporary admin messages across page loads.
  */
 
 /**
@@ -417,7 +420,8 @@ function get_payload_customer_id($user_id=null) {
 	                     $logger->info('Payload Customer ID found for user email:'.$user->user_email, $context);
 						return $payload_customer_id;
 					}
-			} catch ( Exception $e ) {
+      } catch ( Exception $e ) {
+        throw $e;
 				$logger->error(
 					'Failed to retrieve Payload customer by email for user ID ' . $user->ID . ': ' . $e->getMessage(),
 					$context
@@ -426,10 +430,10 @@ function get_payload_customer_id($user_id=null) {
 			}
 		}
 
-		if ( ! $payload_customer_id && !empty($user) && $user->user_email && $user->user_nicename ) {
+		if ( ! $payload_customer_id && !empty($user) && $user->user_email && $user->display_name ) {
 
             $company_name = get_user_meta( $user->ID, 'billing_company', true );
-			try {
+            try {
 				// Create new Payload customer
 				$customer = Payload\Customer::create(
 
@@ -443,7 +447,7 @@ function get_payload_customer_id($user_id=null) {
 					)
 				);
 	                     $logger->info('Payload Customer ID Created: ' . ( isset( $customer->id ) ? $customer->id : 'unknown' ), $context);
-			} catch ( Exception $e ) {
+            } catch ( Exception $e ) {
 				$logger->error(
 					'Failed to create Payload customer for user ID ' . $user->ID . ': ' . $e->getMessage(),
 					$context

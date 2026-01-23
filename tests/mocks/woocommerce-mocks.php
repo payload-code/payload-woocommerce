@@ -65,7 +65,7 @@ if (!function_exists('wc_get_order')) {
 class WC_Order {
     private $id;
     private $data = array();
-    
+
     public function __construct($id = 1) {
         $this->id = $id;
         $this->data = array(
@@ -73,10 +73,12 @@ class WC_Order {
             'status' => 'pending',
             'transaction_id' => '',
             'payment_method' => 'payload',
-            'payment_method_title' => 'Payload'
+            'payment_method_title' => 'Payload',
+            'user_id' => 1,
+            'customer_id' => 1
         );
     }
-    
+
     public function get_id() { return $this->id; }
     public function get_total() { return $this->data['total']; }
     public function get_status() { return $this->data['status']; }
@@ -85,11 +87,17 @@ class WC_Order {
     public function get_payment_method_title() { return $this->data['payment_method_title']; }
     public function get_payment_tokens() { return array(1); }
     public function get_items() { return array(); }
-    
+    public function get_user_id() { return $this->data['user_id']; }
+    public function get_customer_id() { return $this->data['customer_id']; }
+    public function get_meta($key, $single = false) { return ''; }
+    public function get_checkout_order_received_url() { return 'http://example.com/order-received/' . $this->id . '/'; }
+
     public function set_transaction_id($id) { $this->data['transaction_id'] = $id; }
     public function set_payment_method($method) { $this->data['payment_method'] = $method; }
     public function set_payment_method_title($title) { $this->data['payment_method_title'] = $title; }
-    
+    public function update_meta_data($key, $value) { return $this; }
+    public function update_status($status, $note = '') { $this->data['status'] = $status; return true; }
+
     public function payment_complete() { $this->data['status'] = 'completed'; }
     public function save() { return true; }
     public function add_payment_token($token) { return true; }
