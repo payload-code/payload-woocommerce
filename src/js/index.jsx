@@ -76,7 +76,6 @@ const Content = ( props ) => {
 		const unsubscribe = onPaymentSetup( async () => {
 			try {
 				const result = await paymentFormRef.current.submit();
-                console.log('Payload payment setup result:', result);
 				return {
 					type: emitResponse.responseTypes.SUCCESS,
 					meta: {

@@ -64,21 +64,21 @@ function payload_update_customer_id_meta( $user_id, $payload_customer_id ) {
  */
 function payload_display_billing_company_field( $checkout ) {
 
-    echo '<div class="form-row form-row-wide" id="billing_company_custom_wrapper">';
+	echo '<div class="form-row form-row-wide" id="billing_company_custom_wrapper">';
 
-    woocommerce_form_field(
-        'billing_company',
-        [
-            'type'        => 'text',
-            'class'       => [ 'form-row-wide' ],
-            'label'       => __( 'Company Name', 'woocommerce' ),
-            'required'    => false,
-            'priority'    => 8,
-        ],
-        $checkout->get_value( 'billing_company' )
-    );
+	woocommerce_form_field(
+		'billing_company',
+		array(
+			'type'     => 'text',
+			'class'    => array( 'form-row-wide' ),
+			'label'    => __( 'Company Name', 'woocommerce' ),
+			'required' => false,
+			'priority' => 8,
+		),
+		$checkout->get_value( 'billing_company' )
+	);
 
-    echo '</div>';
+	echo '</div>';
 }
 // Force a Company field to show on the billing section
 add_action( 'woocommerce_after_checkout_billing_form', 'payload_display_billing_company_field', 10, 2 );
@@ -94,18 +94,17 @@ add_action( 'woocommerce_after_checkout_billing_form', 'payload_display_billing_
  */
 function payload_save_billing_company_to_order( $order, $data ) {
 
-    if ( isset( $_POST['billing_company'] ) && ! empty( $_POST['billing_company'] ) ) {
-        $company = sanitize_text_field( wp_unslash( $_POST['billing_company'] ) );
+	if ( isset( $_POST['billing_company'] ) && ! empty( $_POST['billing_company'] ) ) {
+		$company = sanitize_text_field( wp_unslash( $_POST['billing_company'] ) );
 
-        // Set on the order
-        $order->set_billing_company( $company );
+		// Set on the order
+		$order->set_billing_company( $company );
 
-        // Also persist on the user, if logged in
-        if ( $order->get_customer_id() ) {
-            update_user_meta( $order->get_customer_id(), 'billing_company', $company );
-        }
-    }
-
+		// Also persist on the user, if logged in
+		if ( $order->get_customer_id() ) {
+			update_user_meta( $order->get_customer_id(), 'billing_company', $company );
+		}
+	}
 }
 // Save billing_company to the order and user meta
 add_action( 'woocommerce_checkout_create_order', 'payload_save_billing_company_to_order', 10, 2 );
@@ -121,38 +120,33 @@ add_action( 'woocommerce_checkout_create_order', 'payload_save_billing_company_t
  * @param WP_User $old_user Previous user data object.
  */
 function payload_sync_customer_on_profile_update( $user_id, $old_user ) {
-    setup_payload_api();
-    $user = get_userdata( $user_id );
+	setup_payload_api();
+	$user = get_userdata( $user_id );
 
-    $payload_customer_id = payload_get_customer_id_meta( $user_id );
+	$payload_customer_id = payload_get_customer_id_meta( $user_id );
 
-
-        if( !empty($payload_customer_id)){
-            $company_name = get_user_meta( $user_id, 'billing_company', true );
-            try {
-                $customer = Payload\Customer::filter_by( array('id'=>$payload_customer_id) )->update(
-                    array(
-                        'email' => $user->user_email,
-                        'name'  => $company_name ? $company_name : $user->display_name,
-                        'attrs' => array(
-                            '_wp_user_id' => $user_id,
-                            'Billing Company' => $company_name
-                        )
-                    )
-                );
-            } catch ( Exception $e ) {
-                $logger = wc_get_logger();
-                $logger->error(
-                    'Failed to update Payload customer on profile update for user ID ' . $user_id . ': ' . $e->getMessage(),
-                    array( 'source' => 'payload-woocommerce' )
-                );
-                // Fail silently - don't block profile updates
-            }
-
-
-        }
-
-
+	if ( ! empty( $payload_customer_id ) ) {
+		$company_name = get_user_meta( $user_id, 'billing_company', true );
+		try {
+			$customer = Payload\Customer::filter_by( array( 'id' => $payload_customer_id ) )->update(
+				array(
+					'email' => $user->user_email,
+					'name'  => $company_name ? $company_name : $user->display_name,
+					'attrs' => array(
+						'_wp_user_id'     => $user_id,
+						'Billing Company' => $company_name,
+					),
+				)
+			);
+		} catch ( Exception $e ) {
+			$logger = wc_get_logger();
+			$logger->error(
+				'Failed to update Payload customer on profile update for user ID ' . $user_id . ': ' . $e->getMessage(),
+				array( 'source' => 'payload-woocommerce' )
+			);
+			// Fail silently - don't block profile updates
+		}
+	}
 }
 
 add_action( 'profile_update', 'payload_sync_customer_on_profile_update', 10, 2 );
@@ -251,17 +245,17 @@ function payload_register_blocks_payment_method( $payment_method_registry ) {
  * @param int $order_id Order ID that received payment.
  */
 function payload_autocomplete_virtual_orders( $order_id ) {
-    $gateway = payload_get_gateway_instance();
+	$gateway = payload_get_gateway_instance();
 
-    if ( ! $gateway ) {
-        return;
-    }
+	if ( ! $gateway ) {
+		return;
+	}
 
-    // Use gateway's is_virtual method to check if order contains only virtual/downloadable products
-    if ( $gateway->is_virtual( $order_id ) ) {
-        $order = wc_get_order( $order_id );
-        $order->update_status( 'completed', 'Order auto-completed because it contains only virtual products.' );
-    }
+	// Use gateway's is_virtual method to check if order contains only virtual/downloadable products
+	if ( $gateway->is_virtual( $order_id ) ) {
+		$order = wc_get_order( $order_id );
+		$order->update_status( 'completed', 'Order auto-completed because it contains only virtual products.' );
+	}
 }
 // Auto-complete orders with only virtual/downloadable products
 add_action( 'woocommerce_payment_complete', 'payload_autocomplete_virtual_orders' );
@@ -283,18 +277,24 @@ add_action( 'woocommerce_payment_complete', 'payload_autocomplete_virtual_orders
  */
 function payload_handle_admin_notice_trigger() {
 	// Example trigger: append ?my_notice=1 to any wp-admin URL
-	if (!current_user_can('manage_options')) return;
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
 
 	$my_notice = isset( $_GET['my_notice'] ) ? sanitize_text_field( wp_unslash( $_GET['my_notice'] ) ) : '';
 	if ( $my_notice === '1' ) {
-		set_transient('my_admin_flash_notice_' . get_current_user_id(), [
-			'message' => '✅ Settings saved successfully.',
-			'type'    => 'success', // success | warning | error | info
-		], 60); // seconds
+		set_transient(
+			'my_admin_flash_notice_' . get_current_user_id(),
+			array(
+				'message' => '✅ Settings saved successfully.',
+				'type'    => 'success', // success | warning | error | info
+			),
+			60
+		); // seconds
 	}
 }
 
-add_action('admin_init', 'payload_handle_admin_notice_trigger');
+add_action( 'admin_init', 'payload_handle_admin_notice_trigger' );
 
 /**
  * Display admin flash notices from transient storage.
@@ -305,29 +305,35 @@ add_action('admin_init', 'payload_handle_admin_notice_trigger');
  * @since 1.0.0
  */
 function payload_display_admin_flash_notices() {
-	if (!current_user_can('manage_options')) return;
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
 
 	$key  = 'my_admin_flash_notice_' . get_current_user_id();
-	$data = get_transient($key);
+	$data = get_transient( $key );
 
-	if (!$data) return;
+	if ( ! $data ) {
+		return;
+	}
 
-	delete_transient($key);
+	delete_transient( $key );
 
-	$type    = isset($data['type']) ? $data['type'] : 'info';
-	$message = isset($data['message']) ? $data['message'] : '';
+	$type    = isset( $data['type'] ) ? $data['type'] : 'info';
+	$message = isset( $data['message'] ) ? $data['message'] : '';
 
-	$allowed = ['success', 'warning', 'error', 'info'];
-	if (!in_array($type, $allowed, true)) $type = 'info';
+	$allowed = array( 'success', 'warning', 'error', 'info' );
+	if ( ! in_array( $type, $allowed, true ) ) {
+		$type = 'info';
+	}
 
 	printf(
 		'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
-		esc_attr($type),
-		esc_html($message)
+		esc_attr( $type ),
+		esc_html( $message )
 	);
 }
 
-add_action('admin_notices', 'payload_display_admin_flash_notices');
+add_action( 'admin_notices', 'payload_display_admin_flash_notices' );
 /**
  * Create Payload customer record when WooCommerce customer is created.
  *
@@ -338,18 +344,18 @@ add_action('admin_notices', 'payload_display_admin_flash_notices');
  * @param int $customer_id WooCommerce customer ID.
  */
 function payload_create_customer_on_registration( $customer_id ) {
-       if( ! $customer_id ) {
-        return;
-    }
-    if ( payload_get_customer_id_meta( $customer_id ) ) {
-    return;
-    }
-    setup_payload_api();
-    // User NOW exists
-      get_payload_customer_id($customer_id);
+	if ( ! $customer_id ) {
+		return;
+	}
+	if ( payload_get_customer_id_meta( $customer_id ) ) {
+		return;
+	}
+	setup_payload_api();
+	// User NOW exists
+		get_payload_customer_id( $customer_id );
 }
 
-add_action('woocommerce_created_customer', 'payload_create_customer_on_registration');
+add_action( 'woocommerce_created_customer', 'payload_create_customer_on_registration' );
 
 /**
  * Ensure Payload customer record exists after checkout order is processed.
@@ -364,22 +370,22 @@ add_action('woocommerce_created_customer', 'payload_create_customer_on_registrat
  * @param WC_Order $order        Order object.
  */
 function payload_ensure_customer_after_checkout( $order_id, $posted_data, $order ) {
-    // When new user is created it wasnt getting Payload Customer ID only existing users get customer id
-    // User NOW exists
+	// When new user is created it wasnt getting Payload Customer ID only existing users get customer id
+	// User NOW exists
 
-    $customer_id = $order->get_customer_id();
-    if( ! $customer_id ) {
-        return;
-    }
-    if ( payload_get_customer_id_meta( $customer_id ) ) {
-    return;
-    }
+	$customer_id = $order->get_customer_id();
+	if ( ! $customer_id ) {
+		return;
+	}
+	if ( payload_get_customer_id_meta( $customer_id ) ) {
+		return;
+	}
 
-    setup_payload_api();
-    get_payload_customer_id($customer_id);
+	setup_payload_api();
+	get_payload_customer_id( $customer_id );
 }
 
-add_action('woocommerce_checkout_order_processed', 'payload_ensure_customer_after_checkout', 10, 3);
+add_action( 'woocommerce_checkout_order_processed', 'payload_ensure_customer_after_checkout', 10, 3 );
 
 
 /**
@@ -392,79 +398,73 @@ add_action('woocommerce_checkout_order_processed', 'payload_ensure_customer_afte
  * @param int|null $user_id WordPress user ID. If null, uses current user.
  * @return string|null Payload customer ID or null if unable to create.
  */
-function get_payload_customer_id($user_id=null) {
+function get_payload_customer_id( $user_id = null ) {
 	$payload_customer_id = null;
-    if($user_id){
-        $user = get_user_by( 'id', $user_id );
-    } else {
-        	$user = wp_get_current_user();
-    }
+	if ( $user_id ) {
+		$user = get_user_by( 'id', $user_id );
+	} else {
+			$user = wp_get_current_user();
+	}
 
-    $payload_customer_id = !empty($user) ? payload_get_customer_id_meta( $user->ID ) : null;
+	$payload_customer_id = ! empty( $user ) ? payload_get_customer_id_meta( $user->ID ) : null;
 
-    $logger = wc_get_logger();
-    $context = [ 'source' => 'payload-woocommerce.php' ]; // shows up as the log "Source"
-     $logger->info('Script started Payload Customer ID checking for user ID: ' . ( $user ? $user->ID : 'none' ), $context);
+	$logger  = wc_get_logger();
+	$context = array( 'source' => 'payload-woocommerce.php' ); // shows up as the log "Source"
+	$logger->info( 'Script started Payload Customer ID checking for user ID: ' . ( $user ? $user->ID : 'none' ), $context );
 
+	if ( ! $payload_customer_id && ! empty( $user ) && $user->user_email ) {
+		$logger->info( '$User variable is not empty here is the email:' . $user->user_email, $context );
+		try {
+			$customer = Payload\Customer::filter_by(
+				array( 'email' => $user->user_email )
+			)->all();
 
-		if(!$payload_customer_id && !empty($user) && $user->user_email){
-        $logger->info('$User variable is not empty here is the email:'.$user->user_email, $context);
-			try {
-				$customer = Payload\Customer::filter_by(
-					array("email"=>$user->user_email )
-				)->all();
-
-					if(is_array($customer) && !empty($customer)){
-						$payload_customer_id = $customer[0]->id ;
-						payload_update_customer_id_meta( $user->ID, $payload_customer_id );
-	                     $logger->info('Payload Customer ID found for user email:'.$user->user_email, $context);
-						return $payload_customer_id;
-					}
-      } catch ( Exception $e ) {
-        throw $e;
+			if ( is_array( $customer ) && ! empty( $customer ) ) {
+				$payload_customer_id = $customer[0]->id;
+				payload_update_customer_id_meta( $user->ID, $payload_customer_id );
+				$logger->info( 'Payload Customer ID found for user email:' . $user->user_email, $context );
+				return $payload_customer_id;
+			}
+		} catch ( Exception $e ) {
+			throw $e;
 				$logger->error(
 					'Failed to retrieve Payload customer by email for user ID ' . $user->ID . ': ' . $e->getMessage(),
 					$context
 				);
 				// Continue to creation attempt
-			}
 		}
+	}
 
-		if ( ! $payload_customer_id && !empty($user) && $user->user_email && $user->display_name ) {
+	if ( ! $payload_customer_id && ! empty( $user ) && $user->user_email && $user->display_name ) {
 
-            $company_name = get_user_meta( $user->ID, 'billing_company', true );
-            try {
-				// Create new Payload customer
-				$customer = Payload\Customer::create(
+		$company_name = get_user_meta( $user->ID, 'billing_company', true );
+		try {
+			// Create new Payload customer
+			$customer = Payload\Customer::create(
+				array(
+					'email' => $user->user_email,
+					'name'  => $company_name ? $company_name : $user->display_name,
+					'attrs' => array(
+						'_wp_user_id'     => $user->ID,
+						'Billing Company' => $company_name,
+					),
+				)
+			);
+					$logger->info( 'Payload Customer ID Created: ' . ( isset( $customer->id ) ? $customer->id : 'unknown' ), $context );
+		} catch ( Exception $e ) {
+			$logger->error(
+				'Failed to create Payload customer for user ID ' . $user->ID . ': ' . $e->getMessage(),
+				$context
+			);
+			return null;
+		}
+	}
 
-					array(
-						'email' => $user->user_email,
-						'name'  => $company_name ? $company_name : $user->display_name,
-						'attrs' => array(
-							'_wp_user_id' => $user->ID,
-							'Billing Company'=>$company_name,
-						),
-					)
-				);
-	                     $logger->info('Payload Customer ID Created: ' . ( isset( $customer->id ) ? $customer->id : 'unknown' ), $context);
-            } catch ( Exception $e ) {
-				$logger->error(
-					'Failed to create Payload customer for user ID ' . $user->ID . ': ' . $e->getMessage(),
-					$context
-				);
-				return null;
-			}
-					}
+	if ( ! empty( $customer ) ) {
+		$payload_customer_id = $customer->id;
 
-
-				if(!empty($customer))
-				{
-				$payload_customer_id = $customer->id;
-
-				payload_update_customer_id_meta( $user->ID, $payload_customer_id );
-				}
-		
-	
+		payload_update_customer_id_meta( $user->ID, $payload_customer_id );
+	}
 
 	return $payload_customer_id ?: null;
 }
@@ -589,18 +589,18 @@ add_filter( 'woocommerce_subscription_payment_method_to_display', 'payload_subsc
  * Gets the payment method title from the parent order for subscriptions.
  *
  * @since 1.0.0
- * @param string           $label        Default payment method label.
- * @param WC_Subscription  $subscription Subscription object.
- * @param string           $context      Display context.
+ * @param string          $label        Default payment method label.
+ * @param WC_Subscription $subscription Subscription object.
+ * @param string          $context      Display context.
  * @return string Payment method title from parent order or default message.
  */
 function payload_subscription_payment_method_to_display( $label, $subscription, $context ) {
 
 	$parent_order = wc_get_order( $subscription->get_parent_id() );
-	if($parent_order){
-	return $parent_order->get_payment_method_title();
+	if ( $parent_order ) {
+		return $parent_order->get_payment_method_title();
 	}
-	return "No Payment Method available at this time.";
+	return 'No Payment Method available at this time.';
 }
 
 add_action( 'woocommerce_new_payment_token', 'payload_retry_orders_after_card_update', 10, 2 );
@@ -612,11 +612,10 @@ add_action( 'woocommerce_payment_token_set_default', 'payload_retry_orders_after
  * or set as default. Includes order-scoped suppression to prevent duplicate retries.
  *
  * @since 1.0.0
- * @param int                      $token_id Payment token ID.
- * @param WC_Payment_Token|null    $token    Payment token object.
+ * @param int                   $token_id Payment token ID.
+ * @param WC_Payment_Token|null $token    Payment token object.
  */
 function payload_retry_orders_after_card_update( $token_id, $token = null ) {
-
 
 	if ( ! $token instanceof WC_Payment_Token ) {
 		$token = WC_Payment_Tokens::get( $token_id );
@@ -662,30 +661,29 @@ function payload_retry_orders_after_card_update( $token_id, $token = null ) {
 		if ( ! $order instanceof WC_Order ) {
 			continue;
 		}
-        $order_id = (int) $order->get_id();
-         // Order-scoped suppression check
-        if ( payload_card_update_retry_suppressed( $order_id ) ) {
+		$order_id = (int) $order->get_id();
+		// Order-scoped suppression check
+		if ( payload_card_update_retry_suppressed( $order_id ) ) {
 			continue;
 		}
-        payload_card_update_retry_suppressed( $order_id, true );
+		payload_card_update_retry_suppressed( $order_id, true );
 
 		try {
-            if ( strval( $order->get_payment_method() ) !== strval( $token->get_id() ) ) {
-                $order->set_payment_method( $token->get_id() );
+			if ( strval( $order->get_payment_method() ) !== strval( $token->get_id() ) ) {
+				$order->set_payment_method( $token->get_id() );
 
-                if ( method_exists( $token, 'get_card_type' ) && method_exists( $token, 'get_last4' ) && $token->get_last4() ) {
-                    $method_title = sprintf(
-                        __( '%1$s ending in %2$s', 'payload' ),
-                        strtoupper( $token->get_card_type() ),
-                        $token->get_last4()
-                    );
-                    $order->set_payment_method_title( $method_title );
-                }
+				if ( method_exists( $token, 'get_card_type' ) && method_exists( $token, 'get_last4' ) && $token->get_last4() ) {
+					$method_title = sprintf(
+						__( '%1$s ending in %2$s', 'payload' ),
+						strtoupper( $token->get_card_type() ),
+						$token->get_last4()
+					);
+					$order->set_payment_method_title( $method_title );
+				}
 
-                $order->save();
-            }
+				$order->save();
+			}
 
-	
 			$gateway->create_payment_for_order( $order, $order->get_total(), $token->get_token() );
 			$order->add_order_note( __( 'Automatically retried payment after customer updated saved card.', 'payload' ) );
 		} catch ( Exception $e ) {
@@ -696,10 +694,10 @@ function payload_retry_orders_after_card_update( $token_id, $token = null ) {
 				)
 			);
 		} finally {
-            // Remove order-scoped suppression
-            payload_card_update_retry_suppressed( $order_id, false );       
-        }
-    }
+			// Remove order-scoped suppression
+			payload_card_update_retry_suppressed( $order_id, false );
+		}
+	}
 }
 
 /**
@@ -741,7 +739,7 @@ function payload_get_gateway_instance() {
  * @return bool True if order retry is suppressed, false otherwise.
  */
 function payload_card_update_retry_suppressed( $order_id = null, $status = null ) {
-	static $suppressed_orders = [];
+	static $suppressed_orders = array();
 
 	$order_id = $order_id ? (int) $order_id : 0;
 
