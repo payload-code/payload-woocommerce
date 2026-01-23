@@ -175,9 +175,9 @@ class Test_Error_Handling extends TestCase {
         Monkey\Functions\expect('wc_get_order')->with(123)->andReturn($order);
 
         // Test handling of authorized payment
-        $result = $this->gateway->handle_order_payment($order, $payment_authorized);
+        $this->gateway->handle_order_payment($order, $payment_authorized);
 
-        $this->assertEquals('authorized', $result->status);
+        $this->assertEquals('authorized', $payment_authorized->status);
     }
 
     /**
@@ -266,6 +266,8 @@ class Test_Error_Handling extends TestCase {
         $order->shouldReceive('update_meta_data')->andReturnSelf();
         $order->shouldReceive('save')->andReturnSelf();
         $order->shouldReceive('set_transaction_id')->with(Mockery::type('string'));
+        $order->shouldReceive('set_payment_method_title')->with(Mockery::type('string'));
+        $order->shouldReceive('set_payment_method')->with(Mockery::type('string'));
         $order->shouldReceive('payment_complete')->zeroOrMoreTimes();
 
         $payment = Mockery::mock();
@@ -275,6 +277,7 @@ class Test_Error_Handling extends TestCase {
         $payment->payment_method_id = 'pm_123';
         $payment->payment_method = array(
             'id' => 'pm_123',
+            'description' => 'Visa ending in 1111',
             'card' => array(
                 'card_brand' => 'visa',
                 'card_number' => '4111111111111111',
@@ -313,7 +316,7 @@ class Test_Error_Handling extends TestCase {
 
         Monkey\Functions\expect('wc_get_order')->with(123)->andReturn($order);
 
-        $result = $this->gateway->is_virtual(123);
+        $result = payload_order_is_virtual(123);
 
         // Should return false when product is null
         $this->assertFalse($result);

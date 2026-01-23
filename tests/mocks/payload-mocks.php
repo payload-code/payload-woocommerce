@@ -51,6 +51,7 @@ namespace Payload {
             $mock->payment_method_id = 'pm_123';
             $mock->payment_method = array(
                 'id' => 'pm_123',
+                'description' => 'Visa ending in 1111',
                 'card' => array(
                     'card_brand' => 'visa',
                     'card_number' => '4111111111111111',

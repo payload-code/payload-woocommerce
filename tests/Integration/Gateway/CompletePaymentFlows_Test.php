@@ -257,6 +257,8 @@ class Test_Integration_Payment_Flows extends TestCase {
 
         $order = $this->create_mock_order(888, 100.00, 1);
         $order->shouldReceive('set_transaction_id')->with(Mockery::type('string'));
+        $order->shouldReceive('set_payment_method_title')->with(Mockery::type('string'));
+        $order->shouldReceive('set_payment_method')->with(Mockery::type('string'));
         $order->shouldReceive('get_items')->andReturn(array());
 
         $payment = Mockery::mock();
@@ -266,6 +268,7 @@ class Test_Integration_Payment_Flows extends TestCase {
         $payment->payment_method_id = 'pm_assoc';
         $payment->payment_method = array(
             'id' => 'pm_assoc',
+            'description' => 'Visa ending in 1111',
             'card' => array(
                 'card_brand' => 'visa',
                 'card_number' => '4111111111111111',

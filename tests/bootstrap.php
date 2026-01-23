@@ -28,3 +28,9 @@ require_once __DIR__ . '/mocks/woocommerce-mocks.php';
 require_once dirname(__DIR__) . '/payload-woocommerce.php';
 require_once dirname(__DIR__) . '/includes/class-wc-payload-gateway.php';
 require_once dirname(__DIR__) . '/includes/class-wc-payload-blocks.php';
+
+// Load function files (normally loaded via plugins_loaded hook)
+require_once dirname(__DIR__) . '/includes/payload-api-functions.php';
+require_once dirname(__DIR__) . '/includes/payload-customer-functions.php';
+require_once dirname(__DIR__) . '/includes/payload-order-functions.php';
+require_once dirname(__DIR__) . '/includes/payload-utility-functions.php';
