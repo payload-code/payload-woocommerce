@@ -7,25 +7,11 @@
  * @package Payload_WooCommerce
  */
 
-use PHPUnit\Framework\TestCase;
+use PayloadWooCommerce\Tests\Unit\UnitTestCase;
 use Brain\Monkey;
 use Mockery as m;
 
-class PayloadUtilityFunctions_Test extends TestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		Monkey\setUp();
-
-		$_POST = array();
-		$_GET  = array();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		Mockery::close();
-		parent::tearDown();
-	}
+class PayloadUtilityFunctions_Test extends UnitTestCase {
 
 	public function test_payload_handle_admin_notice_trigger_sets_transient() {
 		$_GET = array( 'my_notice' => '1' );

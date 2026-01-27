@@ -144,6 +144,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 			$order = wc_get_order( $order_id );
 
+			if ( ! $order ) {
+				throw new Exception( __( 'Invalid order', 'payload' ) );
+			}
+
 			$user_id_from_order = payload_get_order_customer_id( $order );
 
 			$post_payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
@@ -154,12 +158,27 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				return $this->process_subscription_payment_method_update( $order, $post_payment_method_id, $user_id_from_order );
 			}
 
+			// Handle zero-amount orders (e.g., 100% discount coupons, free trials)
+			if ( $order->get_total() == 0 ) {
+				$logger->info( 'Zero-amount order detected for Order ID: ' . $order_id . ', completing without payment processing', $context );
+				$order->payment_complete();
+				return array(
+					'result'   => 'success',
+					'redirect' => $this->get_return_url( $order ),
+				);
+			}
+
 			// Process payment using token or payment method
 			if ( ! empty( $post_token ) || ! empty( $post_payment_method_id ) ) {
 				$payment = $this->process_token_payment( $order, $post_token, $post_payment_method_id, $user_id_from_order );
 			} else {
+				$transaction_id = isset( $_POST['transactionid'] ) ? sanitize_text_field( wp_unslash( $_POST['transactionid'] ) ) : '';
+				if ( empty( $transaction_id ) ) {
+					throw new Exception( __( 'Missing payment details', 'payload' ) );
+				}
+
 				// Confirm payment processed on client side
-				$payment = $this->process_client_side_payment( $order, $user_id_from_order );
+				$payment = $this->process_client_side_payment( $transaction_id, $order, $user_id_from_order );
 			}
 
 			$this->handle_order_payment( $order, $payment );
@@ -253,7 +272,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 						60
 					);
 
-					$admin_email = get_option( 'admin_email' );
+				$admin_email = get_option( 'admin_email' );
+
 				if ( $admin_email ) {
 					wp_mail(
 						$admin_email,
@@ -359,11 +379,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	 * @return object Payment transaction object.
 	 * @throws Exception If transaction ID is missing or amount mismatches.
 	 */
-	protected function process_client_side_payment( $order, $user_id_from_order ) {
-		$transaction_id = isset( $_POST['transactionid'] ) ? sanitize_text_field( wp_unslash( $_POST['transactionid'] ) ) : '';
-		if ( empty( $transaction_id ) ) {
-			throw new Exception( __( 'Missing payment details', 'payload' ) );
-		}
+	protected function process_client_side_payment( $transaction_id, $order, $user_id_from_order ) {
 
 		try {
 			$payment = Payload\Transaction::get( $transaction_id );
@@ -453,7 +469,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 						'description'  => ' Order Item(s): ' . payload_get_order_product_names( $order_id ),
 					)
 				);
-			} catch ( Exception $e ) {
+      } catch ( Exception $e ) {
 				$logger = wc_get_logger();
 				$logger->error(
 					'Failed to update payment details for order ' . $order_id . ': ' . $e->getMessage(),

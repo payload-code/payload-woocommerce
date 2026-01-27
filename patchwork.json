@@ -1,3 +1,11 @@
 {
-    "redefinable-internals": ["getenv", "function_exists"]
+    "redefinable-internals": [
+        "getenv",
+        "function_exists",
+        "curl_init",
+        "curl_setopt",
+        "curl_exec",
+        "curl_getinfo",
+        "curl_close"
+    ]
 }

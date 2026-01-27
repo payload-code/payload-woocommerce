@@ -7,29 +7,19 @@
  * @package Payload_WooCommerce
  */
 
-use PHPUnit\Framework\TestCase;
+use PayloadWooCommerce\Tests\Unit\UnitTestCase;
 use Brain\Monkey;
 use Mockery as m;
 
-class PayloadCustomerFunctions_Test extends TestCase {
+class PayloadCustomerFunctions_Test extends UnitTestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		Monkey\setUp();
 
-		// Reset global state
-		$_POST = array();
-		$_GET  = array();
 		// Default: assume no existing customer unless test says otherwise
-		if ( class_exists( 'Customer' ) ) {
-			Customer::$shouldFindExisting = true;
+		if ( class_exists( 'Payload\Customer' ) ) {
+			\Payload\Customer::$shouldFindExisting = true;
 		}
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		Mockery::close();
-		parent::tearDown();
 	}
 
 	public function test_get_payload_customer_id_creates_new_customer() {

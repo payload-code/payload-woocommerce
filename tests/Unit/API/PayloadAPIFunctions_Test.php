@@ -7,25 +7,11 @@
  * @package Payload_WooCommerce
  */
 
-use PHPUnit\Framework\TestCase;
+use PayloadWooCommerce\Tests\Unit\UnitTestCase;
 use Brain\Monkey;
 use Mockery as m;
 
-class PayloadAPIFunctions_Test extends TestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		Monkey\setUp();
-
-		$_POST = array();
-		$_GET  = array();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		Mockery::close();
-		parent::tearDown();
-	}
+class PayloadAPIFunctions_Test extends UnitTestCase {
 
 	public function test_get_intent_for_payment_method() {
 		$_GET = array( 'type' => 'payment_method' );

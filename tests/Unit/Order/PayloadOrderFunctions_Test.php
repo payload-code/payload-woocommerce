@@ -7,25 +7,11 @@
  * @package Payload_WooCommerce
  */
 
-use PHPUnit\Framework\TestCase;
+use PayloadWooCommerce\Tests\Unit\UnitTestCase;
 use Brain\Monkey;
 use Mockery as m;
 
-class PayloadOrderFunctions_Test extends TestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		Monkey\setUp();
-
-		$_POST = array();
-		$_GET  = array();
-	}
-
-	protected function tearDown(): void {
-		Monkey\tearDown();
-		Mockery::close();
-		parent::tearDown();
-	}
+class PayloadOrderFunctions_Test extends UnitTestCase {
 
 	public function test_payload_subscription_payment_method_to_display() {
 		$subscription_mock = Mockery::mock();
