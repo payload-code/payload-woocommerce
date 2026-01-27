@@ -351,6 +351,74 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 	}
 
 	/**
+	 * Test: Decline checkout flow with new payment method
+	 */
+	public function test_decline_checkout_flow_with_new_payment_method() {
+		// Test data
+		$order_id          = 123;
+		$amount            = 100.00;
+		$user_id           = 1;
+		$customer_id       = 'cust_123';
+		$payment_method_id = 'pm_new123';
+		$card_brand        = 'visa';
+		$last4             = '1111';
+		$expiry            = '12/2025';
+
+		// Mock HTTP responses for Payload API calls
+		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
+		CurlMocker::mockUpdate(
+			'payment_methods',
+			$payment_method_id,
+			array(),
+			array( 'attrs' => array( '_wp_token_id' => 1 ) )
+		);
+		CurlMocker::mockError(
+			'POST',
+			'https://api.payload.com/transactions',
+			400,
+			'TransactionDeclined',
+			'This transaction was declined'
+		);
+
+		// Setup: Customer checking out with new card
+		$_POST = array( 'payment_method_id' => $payment_method_id );
+
+		$order = $this->create_mock_order( $order_id, $amount, $user_id );
+
+		// Mock WordPress/WooCommerce functions
+		Monkey\Functions\expect( 'get_user_meta' )
+			->with( $user_id, PAYLOAD_CUSTOMER_ID_META_KEY, true )
+			->andReturn( $customer_id );
+
+		Monkey\Functions\expect( 'setup_payload_api' )->once()->andReturnUsing(
+			function () {
+				\Payload\API::$api_key = 'test_key';
+				\Payload\API::$api_url = 'https://api.payload.com';
+			}
+		);
+		Monkey\Functions\expect( 'wcs_is_subscription' )->with( $order_id )->andReturn( false );
+		Monkey\Functions\expect( 'wc_get_order' )->with( $order_id )->andReturn( $order );
+
+		// Mock logger - should log info but not errors (exception will be thrown)
+		$logger_mock = Mockery::mock();
+		$logger_mock->shouldReceive( 'info' )->andReturn( true );
+		$logger_mock->shouldNotReceive( 'error' );
+		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
+
+		$subscription_order_mock = Mockery::mock( 'alias:WC_Subscriptions_Order' );
+		$subscription_order_mock->shouldReceive( 'order_contains_subscription' )
+			->with( $order_id )
+			->andReturn( false );
+
+		// Expect TransactionDeclined exception
+		$this->expectException( \TransactionDeclined::class );
+		$this->expectExceptionMessage( 'Transaction creation failed: This transaction was declined' );
+
+		// Execute
+		$this->gateway->process_payment( $order_id );
+	}
+
+	/**
 	 * Test: Subscription renewal payment
 	 */
 	public function test_subscription_renewal_payment_flow() {
@@ -443,6 +511,97 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$this->gateway->scheduled_subscription_payment( $amount, $order );
 
 		$this->assertTrue( true );
+	}
+
+	/**
+	 * Test: Subscription renewal payment decline
+	 */
+	public function test_subscription_renewal_payment_decline_flow() {
+		// Test data
+		$order_id          = 789;
+		$amount            = 50.00;
+		$user_id           = 1;
+		$payment_method_id = 'pm_subscription123';
+		$parent_order_id   = 456;
+		$token_id          = 111;
+		$card_brand        = 'mastercard';
+		$last4             = '5555';
+		$expiry            = '12/2025';
+		$subscription_id   = 'sub_123';
+
+		$order = $this->create_mock_order( $order_id, $amount, $user_id );
+		$order->shouldReceive( 'get_meta' )
+			->with( '_payload_payment_method_id', true )
+			->andReturn( $payment_method_id );
+		$order->shouldReceive( 'add_order_note' )->andReturn( true );
+		$order->shouldReceive( 'set_payment_method' )->with( Mockery::any() );
+		$order->shouldReceive( 'set_payment_method_title' )->with( Mockery::type( 'string' ) );
+
+		$subscription = Mockery::mock( 'WC_Subscription' );
+		$subscription->shouldReceive( 'get_parent_id' )->andReturn( $parent_order_id );
+
+		$parent_order = Mockery::mock( 'WC_Order' );
+		$parent_order->shouldReceive( 'get_payment_method' )->andReturn( strval( $token_id ) );
+		$parent_order->shouldReceive( 'get_payment_tokens' )->andReturn( array( strval( $token_id ) ) );
+
+		// Create mock token
+		$token = Mockery::mock( 'WC_Payment_Token_CC' );
+		$token->shouldReceive( 'get_id' )->andReturn( $token_id );
+		$token->shouldReceive( 'get_user_id' )->andReturn( $user_id );
+		$token->shouldReceive( 'get_token' )->andReturn( $payment_method_id );
+		$token->shouldReceive( 'get_card_type' )->andReturn( $card_brand );
+		$token->shouldReceive( 'get_last4' )->andReturn( $last4 );
+
+		// Mock WC_Payment_Tokens::get() to return our token
+		\Patchwork\redefine(
+			'WC_Payment_Tokens::get',
+			function ( $id ) use ( $token, $token_id ) {
+				if ( $id === strval( $token_id ) ) {
+					return $token;
+				}
+				return null;
+			}
+		);
+
+		Monkey\Functions\expect( 'setup_payload_api' )->once();
+		Monkey\Functions\expect( 'wcs_get_subscriptions_for_order' )
+			->with( $order_id, array( 'order_type' => 'any' ) )
+			->andReturn( array( $subscription_id => $subscription ) );
+
+		Monkey\Functions\expect( 'wc_get_order' )
+			->andReturnUsing(
+				function ( $id ) use ( $order_id, $parent_order_id, $order, $parent_order ) {
+					if ( $id == $order_id ) {
+						return $order;
+					}
+					if ( $id == $parent_order_id ) {
+						return $parent_order;
+					}
+					return null;
+				}
+			);
+
+		// Mock HTTP response for Payload API calls
+		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
+
+		CurlMocker::mockError(
+			'POST',
+			'https://api.payload.com/transactions',
+			400,
+			'TransactionDeclined',
+			'This transaction was declined'
+		);
+
+		// Mock logger
+		$logger_mock = Mockery::mock();
+		$logger_mock->shouldReceive( 'info' )->andReturn( true );
+		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
+
+		// Expect TransactionDeclined exception
+		$this->expectException( \TransactionDeclined::class );
+		$this->expectExceptionMessage( 'Transaction creation failed: This transaction was declined' );
+
+		$this->gateway->scheduled_subscription_payment( $amount, $order );
 	}
 
 	/**

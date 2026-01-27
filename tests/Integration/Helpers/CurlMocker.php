@@ -316,4 +316,33 @@ class CurlMocker {
 			$expected_request_body
 		);
 	}
+
+	/**
+	 * Helper: Mock a Payload API error response
+	 *
+	 * @param string $method HTTP method (GET, POST, PUT, DELETE)
+	 * @param string $url Full URL
+	 * @param int    $status_code HTTP status code (e.g., 400, 422)
+	 * @param string $error_type Error type (e.g., InvalidAttributes, BadRequest)
+	 * @param string $error_description Error description
+	 * @param array  $details Optional field-level validation errors (e.g., ['payment_method_id' => 'Required'])
+	 */
+	public static function mockError( $method, $url, $status_code, $error_type, $error_description, $details = array() ) {
+		$error_response = array(
+			'object'            => 'error',
+			'error_type'        => $error_type,
+			'error_description' => $error_description,
+		);
+
+		if ( ! empty( $details ) ) {
+			$error_response['details'] = $details;
+		}
+
+		self::mockResponse(
+			$method,
+			$url,
+			$status_code,
+			$error_response
+		);
+	}
 }
