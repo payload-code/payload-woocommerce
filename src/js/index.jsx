@@ -9,6 +9,7 @@ import {
 } from 'payload-react';
 
 import '../css/style.scss';
+/* global MutationObserver */
 
 const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
 const { getSetting } = window.wc.wcSettings;
@@ -19,8 +20,8 @@ const label =
 	window.wp.i18n.__( 'Credit/Debit Card', 'payload' );
 
 const PaymentMethodFields = () => {
-	const [ cardInvalidMessage, setCardInvalidMessage ] = useState();
 	const [ nameInvalidMessage, setNameInvalidMessage ] = useState();
+	const [ cardInvalidMessage, setCardInvalidMessage ] = useState();
 
 	return (
 		<div className="pl-form-container">
@@ -106,6 +107,10 @@ const Content = ( props ) => {
 		onPaymentSetup,
 	] );
 
+	if ( ! clientToken ) {
+		return;
+	}
+
 	return (
 		<>
 			{ decodeEntities( settings.description || '' ) }
@@ -186,6 +191,10 @@ const AddPaymentMethod = () => {
 		}
 	}, [ paymentMethodId ] );
 
+	if ( ! clientToken ) {
+		return;
+	}
+
 	return (
 		<>
 			<PaymentMethodForm
@@ -254,14 +263,97 @@ const mountPaymentMethodForm = () => {
 	}
 };
 
-window.plMountPaymentMethodForm = () => {
-	if ( document.readyState === 'complete' ) {
+// Expose a single global that mounts the payment form ONCE (handles lazy / re-renders)
+window.plMountPaymentMethodForm = ( () => {
+	const TARGET_SELECTOR = '#payload-add-payment-method';
+
+	let mountedContainer = null; // track which exact element we mounted into
+	let observer = null;
+
+	// --- helpers -------------------------------------------------------------
+
+	const actuallyMount = ( container ) => {
+		if ( ! container ) {
+			return;
+		}
+
+		// If we already mounted into this exact DOM node and it's still in the DOM, do nothing.
+		if (
+			mountedContainer === container &&
+			document.body.contains( container )
+		) {
+			return;
+		}
+
+		// If your function can take a container, pass it in:
+		// mountPaymentMethodForm(container);
 		mountPaymentMethodForm();
-	} else {
-		document.addEventListener( 'DOMContentLoaded', function () {
-			mountPaymentMethodForm();
+
+		mountedContainer = container;
+	};
+
+	const cleanup = () => {
+		// We only remove the load listener so it doesn't fire again.
+		// We deliberately KEEP the observer so we can survive checkout re-renders.
+		window.removeEventListener( 'load', onLoad );
+	};
+
+	const onLoad = () => {
+		const container = document.querySelector( TARGET_SELECTOR );
+
+		// If we have a container, mount now.
+		if ( container ) {
+			actuallyMount( container );
+			cleanup();
+		}
+	};
+
+	const handleFound = ( container ) => {
+		if ( ! container ) {
+			return;
+		}
+
+		// If everything is fully loaded, mount immediately
+		if ( document.readyState === 'complete' ) {
+			actuallyMount( container );
+			// DO NOT clean up the observer here – we want to handle later re-renders
+		}
+	};
+
+	const initObserver = () => {
+		if ( observer ) {
+			return;
+		}
+
+		observer = new MutationObserver( () => {
+			// On any DOM change, see if our container exists and handle it
+			const container = document.querySelector( TARGET_SELECTOR );
+			if ( container ) {
+				handleFound( container );
+			}
 		} );
-	}
-};
+
+		observer.observe( document.documentElement || document.body, {
+			childList: true,
+			subtree: true,
+		} );
+	};
+
+	const init = () => {
+		// First, if the container already exists, handle it
+		const container = document.querySelector( TARGET_SELECTOR );
+		if ( container ) {
+			handleFound( container );
+		}
+
+		// Ensure we mount after all assets are loaded (good for lazy templates)
+		window.addEventListener( 'load', onLoad, { once: true } );
+
+		// Watch for dynamic / lazy-loaded injection of the target container
+		initObserver();
+	};
+
+	return init;
+} )();
 
 window.plMountPaymentMethodForm();

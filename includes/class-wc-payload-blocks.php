@@ -1,8 +1,19 @@
 <?php
+/**
+ * Payload Blocks Payment Method
+ *
+ * Handles Payload payment method for WooCommerce Blocks checkout.
+ *
+ * @package Payload_WooCommerce
+ * @since   1.0.0
+ */
+
+defined( 'ABSPATH' ) || exit;
 
 use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
 
 final class WC_Payload_Blocks extends AbstractPaymentMethodType {
+
 
 	private $gateway;
 	protected $name = 'payload';

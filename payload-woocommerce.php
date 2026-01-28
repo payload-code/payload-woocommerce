@@ -3,7 +3,7 @@
  * Plugin Name: Payload WooCommerce
  * Plugin URI: https://github.com/payload-code/payload-woocommerce
  * Description: Accept WooCommerce payments through Payload.com.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Payload
  * Author URI: https://payload.com
  * Requires Plugins: woocommerce
@@ -13,30 +13,59 @@
  * Domain Path: /languages
  */
 
+defined( 'ABSPATH' ) || exit;
+
 require_once 'vendor/autoload.php';
 use Payload\API as pl;
 
+/**
+ * Meta key constant for storing Payload customer ID in WordPress user meta.
+ *
+ * @since 1.4.0
+ */
+define( 'PAYLOAD_CUSTOMER_ID_META_KEY', 'payload_customer_id' );
 
-add_action( 'plugins_loaded', 'woocommerce_payload', 0 );
+/**
+ * Initialize WooCommerce Payload integration.
+ *
+ * Loads the Payload payment gateway class if WooCommerce is available.
+ *
+ * @since 1.0.0
+ */
 function woocommerce_payload() {
 	if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
-		return; // if the WC payment gateway class
+		return; // if the WC payment gateway class is not available
 	}
 
-	include plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-gateway.php';
+	// Load core gateway class
+	include_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-gateway.php';
+
+	// Load function files
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-api-functions.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-customer-functions.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-order-functions.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-utility-functions.php';
 }
+add_action( 'plugins_loaded', 'woocommerce_payload', 0 );
 
-
-add_filter( 'woocommerce_payment_gateways', 'add_payload_gateway' );
+/**
+ * Add Payload gateway to WooCommerce payment gateways.
+ *
+ * @since  1.0.0
+ * @param  array $gateways Array of WooCommerce payment gateway classes.
+ * @return array Modified array of payment gateways including Payload.
+ */
 function add_payload_gateway( $gateways ) {
 	$gateways[] = 'WC_Payload_Gateway';
 	return $gateways;
 }
+add_filter( 'woocommerce_payment_gateways', 'add_payload_gateway' );
 
 /**
- * Custom function to declare compatibility with cart_checkout_blocks feature
+ * Declare compatibility with WooCommerce cart and checkout blocks.
+ *
+ * @since 1.0.0
  */
-add_action( 'before_woocommerce_init', 'declare_cart_checkout_blocks_compatibility' );
 function declare_cart_checkout_blocks_compatibility() {
 	// Check if the required class exists
 	if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
@@ -44,9 +73,13 @@ function declare_cart_checkout_blocks_compatibility() {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
 	}
 }
+add_action( 'before_woocommerce_init', 'declare_cart_checkout_blocks_compatibility' );
 
-// Hook to the 'woocommerce_blocks_loaded' action to register payment method type
-add_action( 'woocommerce_blocks_loaded', 'payload_register_order_approval_payment_method_type' );
+/**
+ * Register Payload payment method type for WooCommerce Blocks.
+ *
+ * @since 1.0.0
+ */
 function payload_register_order_approval_payment_method_type() {
 	// Check if the required class exists
 	if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
@@ -54,101 +87,26 @@ function payload_register_order_approval_payment_method_type() {
 	}
 
 	// Include Blocks Checkout class
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-blocks.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-blocks.php';
 
 	// Hook the registration function to the 'woocommerce_blocks_payment_method_type_registration' action
 	add_action(
 		'woocommerce_blocks_payment_method_type_registration',
-		function ( Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry ) {
-			// Register an instance of WC_Payload_Blocks
-			$payment_method_registry->register( new WC_Payload_Blocks() );
-		}
+		'payload_register_blocks_payment_method'
 	);
 }
+add_action( 'woocommerce_blocks_loaded', 'payload_register_order_approval_payment_method_type' );
 
-function get_payload_customer_id() {
-	$payload_customer_id = null;
-
-	$user = wp_get_current_user();
-	if ( $user ) {
-		$payload_customer_id = get_user_meta( $user->ID, 'payload_customer_id', true );
-
-		if ( ! $payload_customer_id && $user->user_email && $user->user_nicename ) {
-			$customer = Payload\Customer::create(
-				array(
-					'email' => $user->user_email,
-					'name'  => $user->user_nicename,
-					'attrs' => array(
-						'_wp_user_id' => $user->ID,
-					),
-				)
-			);
-
-				$payload_customer_id = $customer->id;
-
-				update_user_meta( $user->ID, 'payload_customer_id', $payload_customer_id );
-		}
-	}
-
-	return $payload_customer_id ?: null;
-}
-
-function get_intent( $data ) {
-	setup_payload_api();
-
-	$payload_customer_id = get_payload_customer_id();
-
-	if ( $_GET['type'] == 'payment_method' ) {
-		$intent = array(
-			'payment_method_form' => array(
-				'payment_method' => array(
-					'customer_id' => $payload_customer_id,
-				),
-			),
-		);
-	} else {
-		$intent = array(
-			'payment_form' => array(
-				'payment' => array(
-					'customer_id' => $payload_customer_id,
-				),
-			),
-		);
-	}
-
-	$clientToken = Payload\ClientToken::create(
-		array( 'intent' => $intent ),
-	);
-
-	return array( 'client_token' => $clientToken->id );
-}
-
-add_action(
-	'rest_api_init',
-	function () {
-		register_rest_route(
-			'wc/v3',
-			'payload_client_token',
-			array(
-				'methods'  => 'GET',
-				'callback' => 'get_intent',
-			)
-		);
-	}
-);
-
-function setup_payload_api() {
-	$settings = get_option( 'woocommerce_payload_settings', array() );
-
-	pl::$api_key = $settings['api_key'];
-	if ( getenv( 'PAYLOAD_API_URL' ) ) {
-		pl::$api_url = getenv( 'PAYLOAD_API_URL' );
-	}
-}
-
-add_filter( 'woocommerce_subscription_payment_method_to_display', 'payload_subscription_payment_method_to_display', 10, 3 );
-
-function payload_subscription_payment_method_to_display( $label, $subscription, $context ) {
-	$parent_order = wc_get_order( $subscription->get_parent_id() );
-	return $parent_order->get_payment_method_title();
+/**
+ * Register Payload Blocks payment method with WooCommerce payment registry.
+ *
+ * Callback function that registers the WC_Payload_Blocks instance with
+ * WooCommerce Blocks payment method registry.
+ *
+ * @since 1.0.0
+ * @param Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry Payment method registry instance.
+ */
+function payload_register_blocks_payment_method( $payment_method_registry ) {
+	// Register an instance of WC_Payload_Blocks
+	$payment_method_registry->register( new WC_Payload_Blocks() );
 }

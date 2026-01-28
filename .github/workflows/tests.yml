@@ -1,14 +1,11 @@
 name: Run Tests
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+  pull_request: {}
 
 jobs:
-  php-tests:
-    name: PHP Tests
+  unit-tests:
+    name: Unit Tests (PHP ${{ matrix.php-version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -36,8 +33,40 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
 
-      - name: Run PHP tests
-        run: composer test
+      - name: Run Unit Tests
+        run: composer test:unit
+
+  integration-tests:
+    name: Integration Tests (PHP ${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php-version: [8.1, 8.2]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          coverage: xdebug
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Run Integration Tests
+        run: composer test:integration
 
   linting:
     name: Code Linting
@@ -61,3 +90,9 @@ jobs:
 
       - name: Run CSS linting
         run: npm run lint:css -- src/css/
+
+      - name: Run MD:DOCS linting
+        run: npm run lint:md::docs
+
+      - name: Run pkg-json linting
+        run: npm run lint:pkg-json
