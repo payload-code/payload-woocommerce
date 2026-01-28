@@ -107,7 +107,9 @@ const Content = ( props ) => {
 		onPaymentSetup,
 	] );
 
-	if ( ! clientToken ) return;
+	if ( ! clientToken ) {
+		return;
+	}
 
 	return (
 		<>
@@ -189,7 +191,9 @@ const AddPaymentMethod = () => {
 		}
 	}, [ paymentMethodId ] );
 
-	if ( ! clientToken ) return;
+	if ( ! clientToken ) {
+		return;
+	}
 
 	return (
 		<>
@@ -313,11 +317,7 @@ window.plMountPaymentMethodForm = ( () => {
 		if ( document.readyState === 'complete' ) {
 			actuallyMount( container );
 			// DO NOT clean up the observer here – we want to handle later re-renders
-			return;
 		}
-
-		// DOM seen but page not fully loaded yet:
-		// Let onLoad() do the actual mount when the page finishes loading.
 	};
 
 	const initObserver = () => {
