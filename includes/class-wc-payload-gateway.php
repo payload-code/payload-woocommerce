@@ -16,6 +16,7 @@ defined( 'ABSPATH' ) || exit;
  * Thrown when a payment transaction is declined.
  */
 class TransactionDeclined extends Exception {
+
 	public $error_description;
 
 	public function __construct( $message = '', $code = 0, Exception $previous = null ) {
@@ -25,6 +26,7 @@ class TransactionDeclined extends Exception {
 }
 
 class WC_Payload_Gateway extends WC_Payment_Gateway {
+
 
 	/**
 	 * Constructor - Initialize payment gateway.
@@ -128,14 +130,19 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Process the payment for an order.
 	 *
-	 * @since 1.0.0
-	 * @param int $order_id The order ID to process payment for.
+	 * @since  1.0.0
+	 * @param  int $order_id The order ID to process payment for.
 	 * @return array Payment result with redirect URL.
 	 * @throws Exception If payment processing fails.
 	 */
 	public function process_payment( $order_id ) {
 		try {
 			setup_payload_api();
+
+			if ( payload_card_update_retry_suppressed( $order_id ) ) {
+				throw new Exception( __( 'Payment already processing for order', 'payload' ) );
+			}
+
 			payload_card_update_retry_suppressed( $order_id, true );
 
 			$logger  = wc_get_logger();
@@ -148,7 +155,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				throw new Exception( __( 'Invalid order', 'payload' ) );
 			}
 
-			$user_id_from_order = payload_get_order_customer_id( $order );
+			$user_id_from_order = payload_get_order_user_id( $order );
 
 			$post_payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
 			$post_token             = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
@@ -196,7 +203,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Add a new payment method to customer account.
 	 *
-	 * @since 1.0.0
+	 * @since  1.0.0
 	 * @return array Result with redirect URL.
 	 * @throws Exception If payment method details are missing.
 	 */
@@ -257,20 +264,20 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$token = WC_Payment_Tokens::get( $token_id );
 
 			if ( is_null( $token ) ) {
-					$logger = wc_get_logger();
-					$logger->error( 'No available payment method for order ' . $parent_order->get_id(), array( 'source' => 'payload' ) );
+				$logger = wc_get_logger();
+				$logger->error( 'No available payment method for order ' . $parent_order->get_id(), array( 'source' => 'payload' ) );
 
-					$note = __( 'Automatic subscription payment failed: No payment method on file for this account.', 'payload' );
-					$renewal_order->add_order_note( $note );
-					$renewal_order->save();
-					set_transient(
-						'my_admin_flash_notice_' . get_current_user_id(),
-						array(
-							'message' => 'Automatic subscription payment failed: No payment method on file for this account.',
-							'type'    => 'error',
-						),
-						60
-					);
+				$note = __( 'Automatic subscription payment failed: No payment method on file for this account.', 'payload' );
+				$renewal_order->add_order_note( $note );
+				$renewal_order->save();
+				set_transient(
+					'my_admin_flash_notice_' . get_current_user_id(),
+					array(
+						'message' => 'Automatic subscription payment failed: No payment method on file for this account.',
+						'type'    => 'error',
+					),
+					60
+				);
 
 				$admin_email = get_option( 'admin_email' );
 
@@ -282,7 +289,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 					);
 				}
 
-					return;
+				return;
 			}
 
 			$payment_method_id = $token->get_token();
@@ -311,10 +318,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Process subscription payment method update.
 	 *
-	 * @since 1.0.0
-	 * @param WC_Order $order              The subscription order object.
-	 * @param string   $payment_method_id  The new payment method ID.
-	 * @param int      $user_id_from_order The user ID from the order.
+	 * @since  1.0.0
+	 * @param  WC_Order $order              The subscription order object.
+	 * @param  string   $payment_method_id  The new payment method ID.
+	 * @param  int      $user_id_from_order The user ID from the order.
 	 * @return array Payment result with redirect URL.
 	 * @throws Exception If payment method is missing.
 	 */
@@ -332,9 +339,24 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$update_all = isset( $_POST['update_all_subscriptions_payment_method'] ) ? sanitize_text_field( wp_unslash( $_POST['update_all_subscriptions_payment_method'] ) ) : '';
 		if ( $update_all === '1' ) {
 			$subscriptions = wcs_get_users_subscriptions( $user_id_from_order );
+			$errors        = array();
+
 			foreach ( $subscriptions as $subscription ) {
-				$subscription_parent_order = wc_get_order( $subscription->get_parent_id() );
-				$this->update_order_payment_method_token( $subscription_parent_order, $token );
+				try {
+					$subscription_parent_order = wc_get_order( $subscription->get_parent_id() );
+					$this->update_order_payment_method_token( $subscription_parent_order, $token );
+				} catch ( Exception $e ) {
+					$errors[] = sprintf(
+						'Failed to update subscription %s: %s',
+						$subscription->get_id(),
+						$e->getMessage()
+					);
+				}
+			}
+
+			// If any updates failed, throw an exception with all errors
+			if ( ! empty( $errors ) ) {
+				throw new Exception( implode( '; ', $errors ) );
 			}
 		}
 
@@ -347,11 +369,11 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Process payment using a saved token or new payment method.
 	 *
-	 * @since 1.0.0
-	 * @param WC_Order $order                  The order object.
-	 * @param string   $post_token             The saved token ID from POST.
-	 * @param string   $post_payment_method_id The payment method ID from POST.
-	 * @param int      $user_id_from_order     The user ID from the order.
+	 * @since  1.0.0
+	 * @param  WC_Order $order                  The order object.
+	 * @param  string   $post_token             The saved token ID from POST.
+	 * @param  string   $post_payment_method_id The payment method ID from POST.
+	 * @param  int      $user_id_from_order     The user ID from the order.
 	 * @return object Payment transaction object.
 	 * @throws TransactionDeclined If payment is declined.
 	 */
@@ -373,9 +395,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Process payment that was completed on the client side.
 	 *
-	 * @since 1.0.0
-	 * @param WC_Order $order              The order object.
-	 * @param int      $user_id_from_order The user ID from the order.
+	 * @since  1.0.0
+	 * @param  WC_Order $order              The order object.
+	 * @param  int      $user_id_from_order The user ID from the order.
 	 * @return object Payment transaction object.
 	 * @throws Exception If transaction ID is missing or amount mismatches.
 	 */
@@ -418,10 +440,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Create a payment transaction for an order.
 	 *
-	 * @since 1.0.0
-	 * @param WC_Order         $order  The order object.
-	 * @param float            $amount Amount to charge.
-	 * @param WC_Payment_Token $token  Payment token to use.
+	 * @since  1.0.0
+	 * @param  WC_Order         $order  The order object.
+	 * @param  float            $amount Amount to charge.
+	 * @param  WC_Payment_Token $token  Payment token to use.
 	 * @return object Payment transaction object.
 	 * @throws TransactionDeclined If payment creation fails.
 	 */
@@ -469,7 +491,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 						'description'  => ' Order Item(s): ' . payload_get_order_product_names( $order_id ),
 					)
 				);
-      } catch ( Exception $e ) {
+			} catch ( Exception $e ) {
 				$logger = wc_get_logger();
 				$logger->error(
 					'Failed to update payment details for order ' . $order_id . ': ' . $e->getMessage(),
@@ -517,9 +539,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Create a payment token from a Payload payment method ID.
 	 *
-	 * @since 1.0.0
-	 * @param string $payment_method_id The Payload payment method ID.
-	 * @param int    $user_id           The WordPress user ID.
+	 * @since  1.0.0
+	 * @param  string $payment_method_id The Payload payment method ID.
+	 * @param  int    $user_id           The WordPress user ID.
 	 * @return WC_Payment_Token_CC The created payment token.
 	 * @throws Exception If payment method cannot be retrieved.
 	 */
@@ -542,9 +564,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Create a WooCommerce payment token from payment method data.
 	 *
-	 * @since 1.0.0
-	 * @param array    $payment_method Payment method data array.
-	 * @param int|null $user_id        WordPress user ID (optional).
+	 * @since  1.0.0
+	 * @param  array    $payment_method Payment method data array.
+	 * @param  int|null $user_id        WordPress user ID (optional).
 	 * @return WC_Payment_Token_CC The created or existing payment token.
 	 */
 	public function create_token( $payment_method, $user_id = null ) {
@@ -588,17 +610,18 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	/**
 	 * Check if a card already exists for a customer.
 	 *
-	 * @since 1.0.0
-	 * @param WC_Payment_Token_CC $token The token to check.
+	 * @since  1.0.0
+	 * @param  WC_Payment_Token_CC $token The token to check.
 	 * @return WC_Payment_Token_CC|false Existing token if found, false otherwise.
 	 */
 	public function check_if_card_exist( $token ) {
-			// Check if card exist
+		// Check if card exist
 		$chk_tokens = WC_Payment_Tokens::get_customer_tokens( $token->get_user_id(), $this->id );
 		foreach ( $chk_tokens as $chk_token ) {
-			if ( $chk_token->get_last4() === $token->get_last4() &&
-				$chk_token->get_expiry_month() === $token->get_expiry_month() &&
-				$chk_token->get_expiry_year() === $token->get_expiry_year() ) {
+			if ( $chk_token->get_last4() === $token->get_last4()
+				&& $chk_token->get_expiry_month() === $token->get_expiry_month()
+				&& $chk_token->get_expiry_year() === $token->get_expiry_year()
+			) {
 				return $chk_token;
 			}
 		}
@@ -622,7 +645,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
 
 		if ( $order->get_status() === 'on-hold'
-		&& strval( $order->get_payment_method() ) !== strval( $token->get_id() )
+			&& strval( $order->get_payment_method() ) !== strval( $token->get_id() )
 		) {
 			$order->set_status( 'pending' );
 
@@ -630,7 +653,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
 
 		if ( method_exists( $token, 'get_card_type' )
-		&& method_exists( $token, 'get_last4' ) && $token->get_last4()
+			&& method_exists( $token, 'get_last4' ) && $token->get_last4()
 		) {
 			$method_title = sprintf(
 				__( '%1$s x-%2$s', 'payload' ),

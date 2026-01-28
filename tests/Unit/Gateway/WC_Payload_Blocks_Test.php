@@ -6,6 +6,7 @@ use Mockery as m;
 
 class Test_WC_Payload_Blocks extends UnitTestCase {
 
+
 	private $blocks;
 
 	protected function setUp(): void {

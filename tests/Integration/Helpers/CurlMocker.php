@@ -14,6 +14,7 @@ use Brain\Monkey;
 
 class CurlMocker {
 
+
 	private static $responses       = array();
 	private static $current_request = array();
 	private static $handle_counter  = 0;
@@ -30,11 +31,11 @@ class CurlMocker {
 	/**
 	 * Mock a curl response for a specific request
 	 *
-	 * @param string            $method HTTP method (GET, POST, PUT, DELETE)
-	 * @param string            $url Full URL or URL pattern
-	 * @param int               $status_code HTTP status code
-	 * @param array|string      $response_body Response body (array will be JSON encoded)
-	 * @param array             $response_headers Response headers
+	 * @param string            $method                HTTP method (GET, POST, PUT, DELETE)
+	 * @param string            $url                   Full URL or URL pattern
+	 * @param int               $status_code           HTTP status code
+	 * @param array|string      $response_body         Response body (array will be JSON encoded)
+	 * @param array             $response_headers      Response headers
 	 * @param array|string|null $expected_request_body Expected request body to verify (optional)
 	 */
 	public static function mockResponse( $method, $url, $status_code, $response_body, $response_headers = array(), $expected_request_body = null ) {
@@ -247,10 +248,10 @@ class CurlMocker {
 	/**
 	 * Helper: Mock a Payload Transaction::create() response
 	 *
-	 * @param float       $amount Expected transaction amount
-	 * @param string      $pm_id Expected payment method ID
-	 * @param string|null $customer_id Expected customer ID
-	 * @param array|null  $expected_request_body Full expected request body (optional, for verification)
+	 * @param  float       $amount                Expected transaction amount
+	 * @param  string      $pm_id                 Expected payment method ID
+	 * @param  string|null $customer_id           Expected customer ID
+	 * @param  array|null  $expected_request_body Full expected request body (optional, for verification)
 	 * @return string The generated transaction ID
 	 */
 	public static function mockTransactionCreate( $amount, $pm_id, $customer_id = null, $expected_request_body = null ) {
@@ -289,9 +290,9 @@ class CurlMocker {
 	/**
 	 * Helper: Mock a Payload Transaction/PaymentMethod update response
 	 *
-	 * @param string      $object_type Object type (transactions, payment_methods, etc.)
-	 * @param string|null $object_id Object ID
-	 * @param array       $updated_fields Fields in the response
+	 * @param string      $object_type           Object type (transactions, payment_methods, etc.)
+	 * @param string|null $object_id             Object ID
+	 * @param array       $updated_fields        Fields in the response
 	 * @param array|null  $expected_request_body Expected request body for verification (optional)
 	 */
 	public static function mockUpdate( $object_type, $object_id, $updated_fields, $expected_request_body = null ) {
@@ -320,12 +321,12 @@ class CurlMocker {
 	/**
 	 * Helper: Mock a Payload API error response
 	 *
-	 * @param string $method HTTP method (GET, POST, PUT, DELETE)
-	 * @param string $url Full URL
-	 * @param int    $status_code HTTP status code (e.g., 400, 422)
-	 * @param string $error_type Error type (e.g., InvalidAttributes, BadRequest)
+	 * @param string $method            HTTP method (GET, POST, PUT, DELETE)
+	 * @param string $url               Full URL
+	 * @param int    $status_code       HTTP status code (e.g., 400, 422)
+	 * @param string $error_type        Error type (e.g., InvalidAttributes, BadRequest)
 	 * @param string $error_description Error description
-	 * @param array  $details Optional field-level validation errors (e.g., ['payment_method_id' => 'Required'])
+	 * @param array  $details           Optional field-level validation errors (e.g., ['payment_method_id' => 'Required'])
 	 */
 	public static function mockError( $method, $url, $status_code, $error_type, $error_description, $details = array() ) {
 		$error_response = array(

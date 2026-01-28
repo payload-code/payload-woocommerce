@@ -15,10 +15,10 @@ defined( 'ABSPATH' ) || exit;
  *
  * Gets the payment method title from the parent order for subscriptions.
  *
- * @since 1.0.0
- * @param string          $label        Default payment method label.
- * @param WC_Subscription $subscription Subscription object.
- * @param string          $context      Display context.
+ * @since  1.0.0
+ * @param  string          $label        Default payment method label.
+ * @param  WC_Subscription $subscription Subscription object.
+ * @param  string          $context      Display context.
  * @return string Payment method title from parent order or default message.
  */
 function payload_subscription_payment_method_to_display( $label, $subscription, $context ) {
@@ -104,7 +104,7 @@ function payload_retry_orders_after_card_update( $token_id, $token = null ) {
 						strtoupper( $token->get_card_type() ),
 						$token->get_last4()
 					);
-					$order->set_payment_method_title( $method_title );
+						$order->set_payment_method_title( $method_title );
 				}
 
 				$order->save();
@@ -134,9 +134,9 @@ add_action( 'woocommerce_payment_token_set_default', 'payload_retry_orders_after
  * Uses a static array to track which orders have already been processed during
  * card update retry to prevent infinite loops or duplicate processing.
  *
- * @since 1.0.0
- * @param int|null  $order_id Order ID to check/set suppression for.
- * @param bool|null $status   If provided, sets suppression status (true=suppress, false=unsuppress).
+ * @since  1.0.0
+ * @param  int|null  $order_id Order ID to check/set suppression for.
+ * @param  bool|null $status   If provided, sets suppression status (true=suppress, false=unsuppress).
  * @return bool True if order retry is suppressed, false otherwise.
  */
 function payload_card_update_retry_suppressed( $order_id = null, $status = null ) {
@@ -165,8 +165,8 @@ function payload_card_update_retry_suppressed( $order_id = null, $status = null 
  *
  * Determines whether an order can be auto-completed without physical shipping.
  *
- * @since 1.4.0
- * @param int $order_id Order ID to check.
+ * @since  1.4.0
+ * @param  int $order_id Order ID to check.
  * @return bool True if all products are virtual or downloadable, false otherwise.
  */
 function payload_order_is_virtual( $order_id ) {
@@ -189,21 +189,21 @@ function payload_order_is_virtual( $order_id ) {
 /**
  * Get product names from an order.
  *
- * @since 1.4.0
- * @param int $order_id Order ID.
+ * @since  1.4.0
+ * @param  int $order_id Order ID.
  * @return string Comma-separated product names.
  */
 function payload_get_order_product_names( $order_id ) {
 	$order = wc_get_order( $order_id );
 	if ( ! empty( $order ) ) {
-			$items         = $order->get_items();
-			$product_names = array();
+		$items         = $order->get_items();
+		$product_names = array();
 
 		foreach ( $items as $item ) {
 			$product_names[] = $item->get_name();
 		}
 
-			return implode( ', ', $product_names );
+		return implode( ', ', $product_names );
 	}
 	return '';
 }
@@ -213,11 +213,11 @@ function payload_get_order_product_names( $order_id ) {
  *
  * Compatible with multiple WooCommerce versions.
  *
- * @since 1.4.0
- * @param WC_Order $order The order object.
+ * @since  1.4.0
+ * @param  WC_Order $order The order object.
  * @return int Customer/user ID.
  */
-function payload_get_order_customer_id( $order ) {
+function payload_get_order_user_id( $order ) {
 	if ( is_callable( array( $order, 'get_customer_id' ) ) ) {
 		// Newer WooCommerce (3+)
 		return (int) $order->get_customer_id();

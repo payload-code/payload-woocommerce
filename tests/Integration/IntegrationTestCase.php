@@ -17,6 +17,7 @@ use PayloadWooCommerce\Tests\Integration\Helpers\CurlMocker;
 
 abstract class IntegrationTestCase extends TestCase {
 
+
 	/**
 	 * Set up test environment before each test
 	 */

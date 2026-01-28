@@ -112,13 +112,17 @@ if ( ! function_exists( 'wc_get_logger' ) ) {
 		if ( $logger === null ) {
 			$logger = new class() {
 				public function error( $message, $context = array() ) {
-					return true; }
+					return true;
+				}
 				public function warning( $message, $context = array() ) {
-					return true; }
+					return true;
+				}
 				public function info( $message, $context = array() ) {
-					return true; }
+						return true;
+				}
 				public function debug( $message, $context = array() ) {
-					return true; }
+					return true;
+				}
 			};
 		}
 		return $logger;
@@ -221,6 +225,7 @@ if ( ! function_exists( 'esc_url' ) ) {
 // WP_Error class mock
 if ( ! class_exists( 'WP_Error' ) ) {
 	class WP_Error {
+
 		private $errors     = array();
 		private $error_data = array();
 

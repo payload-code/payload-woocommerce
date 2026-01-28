@@ -14,6 +14,7 @@ use Mockery;
 
 class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 
+
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -30,9 +31,9 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 		$customer_id = 'cust_existing123';
 
 		// Create mock user
-		$user              = Mockery::mock( 'WP_User' );
-		$user->ID          = $user_id;
-		$user->user_email  = 'test@example.com';
+		$user             = Mockery::mock( 'WP_User' );
+		$user->ID         = $user_id;
+		$user->user_email = 'test@example.com';
 
 		// Mock WordPress functions
 		Functions\expect( 'get_user_by' )
@@ -72,9 +73,9 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 		$email       = 'existing@example.com';
 
 		// Create mock user
-		$user              = Mockery::mock( 'WP_User' );
-		$user->ID          = $user_id;
-		$user->user_email  = $email;
+		$user             = Mockery::mock( 'WP_User' );
+		$user->ID         = $user_id;
+		$user->user_email = $email;
 
 		// Mock WordPress functions
 		Functions\expect( 'get_user_by' )
@@ -135,14 +136,14 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 	 * Test get_payload_customer_id creates new customer when not found
 	 */
 	public function test_get_payload_customer_id_creates_new_customer() {
-		$user_id        = 789;
-		$email          = 'newuser@example.com';
+		$user_id         = 789;
+		$email           = 'newuser@example.com';
 		$new_customer_id = 'cust_new789';
 
 		// Create mock user
-		$user              = Mockery::mock( 'WP_User' );
-		$user->ID          = $user_id;
-		$user->user_email  = $email;
+		$user             = Mockery::mock( 'WP_User' );
+		$user->ID         = $user_id;
+		$user->user_email = $email;
 
 		// Mock WordPress functions
 		Functions\expect( 'get_user_by' )
@@ -221,9 +222,9 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 		$user_id = 999;
 
 		// Create mock user without email
-		$user              = Mockery::mock( 'WP_User' );
-		$user->ID          = $user_id;
-		$user->user_email  = '';
+		$user             = Mockery::mock( 'WP_User' );
+		$user->ID         = $user_id;
+		$user->user_email = '';
 
 		// Mock WordPress functions
 		Functions\expect( 'get_user_by' )
@@ -257,14 +258,14 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 	 * Test get_payload_customer_id handles customer lookup error and attempts creation
 	 */
 	public function test_get_payload_customer_id_handles_lookup_error_and_creates_customer() {
-		$user_id        = 111;
-		$email          = 'errortest@example.com';
+		$user_id         = 111;
+		$email           = 'errortest@example.com';
 		$new_customer_id = 'cust_recovery111';
 
 		// Create mock user
-		$user              = Mockery::mock( 'WP_User' );
-		$user->ID          = $user_id;
-		$user->user_email  = $email;
+		$user             = Mockery::mock( 'WP_User' );
+		$user->ID         = $user_id;
+		$user->user_email = $email;
 
 		// Mock WordPress functions
 		Functions\expect( 'get_user_by' )
@@ -337,9 +338,9 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 		$email   = 'failedcreation@example.com';
 
 		// Create mock user
-		$user              = Mockery::mock( 'WP_User' );
-		$user->ID          = $user_id;
-		$user->user_email  = $email;
+		$user             = Mockery::mock( 'WP_User' );
+		$user->ID         = $user_id;
+		$user->user_email = $email;
 
 		// Mock WordPress functions
 		Functions\expect( 'get_user_by' )
@@ -413,9 +414,9 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 		$customer_id = 'cust_current333';
 
 		// Create mock current user
-		$user              = Mockery::mock( 'WP_User' );
-		$user->ID          = $user_id;
-		$user->user_email  = 'current@example.com';
+		$user             = Mockery::mock( 'WP_User' );
+		$user->ID         = $user_id;
+		$user->user_email = 'current@example.com';
 
 		// Mock WordPress functions - should use wp_get_current_user instead of get_user_by
 		Functions\expect( 'wp_get_current_user' )
@@ -474,7 +475,7 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 			->andReturn( $user );
 
 		Functions\when( 'get_user_meta' )
-			->justReturn( $company );
+		->justReturn( $company );
 
 		$expected_customer_data = array(
 			'email' => $email,
@@ -580,7 +581,7 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 			->andReturn( $user );
 
 		Functions\when( 'get_user_meta' )
-			->justReturn( '' );
+		->justReturn( '' );
 
 		$expected_customer_data = array(
 			'email' => $email,
@@ -653,7 +654,7 @@ class PayloadCustomerFunctions_Test extends IntegrationTestCase {
 			->andReturn( $user );
 
 		Functions\when( 'get_user_meta' )
-			->justReturn( $company );
+		->justReturn( $company );
 
 		$expected_customer_data = array(
 			'email' => $email,

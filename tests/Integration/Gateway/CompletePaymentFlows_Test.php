@@ -18,6 +18,7 @@ use Mockery as m;
 
 class Test_Integration_Payment_Flows extends IntegrationTestCase {
 
+
 	private $gateway;
 
 	protected function setUp(): void {
@@ -474,17 +475,17 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 			->andReturn( array( $subscription_id => $subscription ) );
 
 		Monkey\Functions\expect( 'wc_get_order' )
-			->andReturnUsing(
-				function ( $id ) use ( $order_id, $parent_order_id, $order, $parent_order ) {
-					if ( $id == $order_id ) {
+		->andReturnUsing(
+			function ( $id ) use ( $order_id, $parent_order_id, $order, $parent_order ) {
+				if ( $id == $order_id ) {
 						return $order;
-					}
-					if ( $id == $parent_order_id ) {
-						return $parent_order;
-					}
-					return null;
 				}
-			);
+				if ( $id == $parent_order_id ) {
+					return $parent_order;
+				}
+				return null;
+			}
+		);
 
 		// Mock HTTP response for Payload API calls
 		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
@@ -569,17 +570,17 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 			->andReturn( array( $subscription_id => $subscription ) );
 
 		Monkey\Functions\expect( 'wc_get_order' )
-			->andReturnUsing(
-				function ( $id ) use ( $order_id, $parent_order_id, $order, $parent_order ) {
-					if ( $id == $order_id ) {
+		->andReturnUsing(
+			function ( $id ) use ( $order_id, $parent_order_id, $order, $parent_order ) {
+				if ( $id == $order_id ) {
 						return $order;
-					}
-					if ( $id == $parent_order_id ) {
-						return $parent_order;
-					}
-					return null;
 				}
-			);
+				if ( $id == $parent_order_id ) {
+					return $parent_order;
+				}
+				return null;
+			}
+		);
 
 		// Mock HTTP response for Payload API calls
 		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
@@ -607,9 +608,9 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 	/**
 	 * Test: Payment authorization vs processing status
 	 */
-  public function test_payment_authorized_updated_on_virtual_orders() {
-    $payment_id = 'txn_authorized';
-    $ref_number = 'REF_AUTH';
+	public function test_payment_authorized_updated_on_virtual_orders() {
+		$payment_id = 'txn_authorized';
+		$ref_number = 'REF_AUTH';
 
 		$order = Mockery::mock( 'WC_Order' );
 		$order->shouldReceive( 'get_id' )->andReturn( 123 );
@@ -621,11 +622,13 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$order->shouldReceive( 'get_items' )->andReturn( array() );
 		$order->shouldReceive( 'payment_complete' )->once(); // authorized but not virtual, so no payment_complete
 
-    $payment_authorized             = new Payload\Transaction([
-      'id' => $payment_id,
-      'status' => 'authorized',
-      'ref_number' => $ref_number,
-    ]);
+		$payment_authorized = new Payload\Transaction(
+			array(
+				'id'         => $payment_id,
+				'status'     => 'authorized',
+				'ref_number' => $ref_number,
+			)
+		);
 
 		Monkey\Functions\expect( 'get_user_meta' )
 			->with( 1, 'billing_company', true )
@@ -635,22 +638,22 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$logger_mock = Mockery::mock();
 		$logger_mock->shouldNotReceive( 'error' );
 		$logger_mock->shouldReceive( 'info' )->andReturn( true );
-    Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
+		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
 
 		// Mock the payment method update
 		CurlMocker::mockUpdate(
 			'transactions',
 			$payment_id,
-      array(
-        'id' => $payment_id,
-        'status' => 'processed',
-        'ref_number' => $ref_number,
-      ),
-			array( 
-          "order_number" => "123",
-          "status" => "processed",
-          "description" => " Order Item(s): "
-      )
+			array(
+				'id'         => $payment_id,
+				'status'     => 'processed',
+				'ref_number' => $ref_number,
+			),
+			array(
+				'order_number' => '123',
+				'status'       => 'processed',
+				'description'  => ' Order Item(s): ',
+			)
 		);
 
 		Monkey\Functions\expect( 'wc_get_order' )->with( 123 )->andReturn( $order );
@@ -664,9 +667,9 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 	/**
 	 * Test: Payment authorization vs processing status
 	 */
-  public function test_payment_authorized_not_updated_for_physical_orders() {
-    $payment_id = 'txn_authorized';
-    $ref_number = 'REF_AUTH';
+	public function test_payment_authorized_not_updated_for_physical_orders() {
+		$payment_id = 'txn_authorized';
+		$ref_number = 'REF_AUTH';
 
 		$product_mock = Mockery::mock();
 		$product_mock->shouldReceive( 'is_virtual' )->andReturn( false );
@@ -685,11 +688,13 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$order->shouldReceive( 'get_items' )->andReturn( array( $item_mock ) );
 		$order->shouldReceive( 'payment_complete' )->never(); // authorized but not virtual, so no payment_complete
 
-    $payment_authorized             = new Payload\Transaction([
-      'id' => $payment_id,
-      'status' => 'authorized',
-      'ref_number' => $ref_number,
-    ]);
+		$payment_authorized = new Payload\Transaction(
+			array(
+				'id'         => $payment_id,
+				'status'     => 'authorized',
+				'ref_number' => $ref_number,
+			)
+		);
 
 		Monkey\Functions\expect( 'get_user_meta' )
 			->with( 1, 'billing_company', true )
@@ -699,7 +704,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$logger_mock = Mockery::mock();
 		$logger_mock->shouldNotReceive( 'error' );
 		$logger_mock->shouldReceive( 'info' )->andReturn( true );
-    Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
+		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
 
 		Monkey\Functions\expect( 'wc_get_order' )->with( 123 )->andReturn( $order );
 

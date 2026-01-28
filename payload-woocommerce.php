@@ -38,21 +38,21 @@ function woocommerce_payload() {
 	}
 
 	// Load core gateway class
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-gateway.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-gateway.php';
 
 	// Load function files
-	require_once plugin_dir_path( __FILE__ ) . 'includes/payload-api-functions.php';
-	require_once plugin_dir_path( __FILE__ ) . 'includes/payload-customer-functions.php';
-	require_once plugin_dir_path( __FILE__ ) . 'includes/payload-order-functions.php';
-	require_once plugin_dir_path( __FILE__ ) . 'includes/payload-utility-functions.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-api-functions.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-customer-functions.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-order-functions.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-utility-functions.php';
 }
 add_action( 'plugins_loaded', 'woocommerce_payload', 0 );
 
 /**
  * Add Payload gateway to WooCommerce payment gateways.
  *
- * @since 1.0.0
- * @param array $gateways Array of WooCommerce payment gateway classes.
+ * @since  1.0.0
+ * @param  array $gateways Array of WooCommerce payment gateway classes.
  * @return array Modified array of payment gateways including Payload.
  */
 function add_payload_gateway( $gateways ) {
@@ -87,7 +87,7 @@ function payload_register_order_approval_payment_method_type() {
 	}
 
 	// Include Blocks Checkout class
-	require_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-blocks.php';
+	include_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-blocks.php';
 
 	// Hook the registration function to the 'woocommerce_blocks_payment_method_type_registration' action
 	add_action(

@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  * Retrieves the Payload gateway instance from WooCommerce payment gateways,
  * or creates a new instance if necessary.
  *
- * @since 1.0.0
+ * @since  1.0.0
  * @return WC_Payload_Gateway|null Gateway instance or null if unavailable.
  */
 function payload_get_gateway_instance() {

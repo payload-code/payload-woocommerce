@@ -13,6 +13,7 @@ use Mockery as m;
 
 class PayloadAPIFunctions_Test extends UnitTestCase {
 
+
 	public function test_get_intent_for_payment_method() {
 		$_GET = array( 'type' => 'payment_method' );
 

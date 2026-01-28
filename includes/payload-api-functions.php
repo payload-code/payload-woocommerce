@@ -40,8 +40,8 @@ function setup_payload_api() {
  *
  * REST API callback that creates a client token for payment processing.
  *
- * @since 1.0.0
- * @param array $data Request data from REST API.
+ * @since  1.0.0
+ * @param  array $data Request data from REST API.
  * @return array Array containing client_token ID.
  */
 function get_intent( $data ) {
@@ -115,7 +115,7 @@ add_action( 'rest_api_init', 'payload_register_rest_api_routes' );
  * Checks if the current user is logged in before allowing access to
  * Payload REST API endpoints.
  *
- * @since 1.0.0
+ * @since  1.0.0
  * @return bool True if user is logged in, false otherwise.
  */
 function payload_rest_permission_check() {

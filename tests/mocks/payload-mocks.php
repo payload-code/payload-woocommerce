@@ -2,6 +2,7 @@
 
 namespace Payload {
 	class PaymentMethod {
+
 		public $id;
 		public $description;
 
@@ -34,6 +35,7 @@ namespace Payload {
 	}
 
 	class Transaction {
+
 		public $amount;
 		public $ref_number;
 		public $customer_id;
@@ -82,6 +84,7 @@ namespace Payload {
 	}
 
 	class Customer {
+
 		public $id;
 		public $customer;
 		public static $shouldFindExisting = true;
@@ -125,6 +128,7 @@ namespace Payload {
 	}
 
 	class ClientToken {
+
 		public $id;
 
 		public static function create( $data = array() ) {
@@ -135,6 +139,7 @@ namespace Payload {
 	}
 
 	class API {
+
 		public static $api_key = '';
 		public static $api_url = '';
 	}

@@ -1,6 +1,7 @@
 <?php
 
 class WC_Payment_Gateway {
+
 	public $id;
 	public $method_title;
 	public $method_description;
@@ -15,53 +16,75 @@ class WC_Payment_Gateway {
 		$this->title              = 'Test Gateway';
 	}
 
-	public function init_form_fields() {}
-	public function init_settings() {}
-	public function process_admin_options() {}
+	public function init_form_fields() {
+	}
+	public function init_settings() {
+	}
+	public function process_admin_options() {
+	}
 	public function is_available() {
-		return true; }
+		return true;
+	}
 	public function get_return_url( $order ) {
-		return 'http://example.com/thank-you/'; }
+		return 'http://example.com/thank-you/';
+	}
 }
 
 class WC_Payment_Token_CC {
+
 	private $data = array();
 	public function set_data( $data ) {
-		$this->data = $data; }
+		$this->data = $data;
+	}
 	public function set_token( $token ) {
-		$this->data['token'] = $token; }
+		$this->data['token'] = $token;
+	}
 	public function set_gateway_id( $id ) {
-		$this->data['gateway_id'] = $id; }
+		$this->data['gateway_id'] = $id;
+	}
 	public function set_card_type( $type ) {
-		$this->data['card_type'] = $type; }
+		$this->data['card_type'] = $type;
+	}
 	public function set_last4( $last4 ) {
-		$this->data['last4'] = $last4; }
+		$this->data['last4'] = $last4;
+	}
 	public function set_expiry_month( $month ) {
-		$this->data['expiry_month'] = $month; }
+		$this->data['expiry_month'] = $month;
+	}
 	public function set_expiry_year( $year ) {
-		$this->data['expiry_year'] = $year; }
+		$this->data['expiry_year'] = $year;
+	}
 	public function set_user_id( $user_id ) {
-		$this->data['user_id'] = $user_id; }
+		$this->data['user_id'] = $user_id;
+	}
 
 	public function get_token() {
-		return $this->data['token'] ?? ''; }
+		return $this->data['token'] ?? '';
+	}
 	public function get_id() {
-		return $this->data['id'] ?? 1; }
+		return $this->data['id'] ?? 1;
+	}
 	public function get_user_id() {
-		return $this->data['user_id'] ?? 0; }
+		return $this->data['user_id'] ?? 0;
+	}
 	public function get_last4() {
-		return $this->data['last4'] ?? ''; }
+		return $this->data['last4'] ?? '';
+	}
 	public function get_expiry_month() {
-		return $this->data['expiry_month'] ?? ''; }
+		return $this->data['expiry_month'] ?? '';
+	}
 	public function get_expiry_year() {
-		return $this->data['expiry_year'] ?? ''; }
+		return $this->data['expiry_year'] ?? '';
+	}
 
 	public function save() {
 		$this->data['id'] = 1;
-		return true; }
+		return true;
+	}
 }
 
 class WC_Payment_Tokens {
+
 	public static function get( $token_id ) {
 		$token = new WC_Payment_Token_CC();
 		$token->set_token( 'pm_test_token' );
@@ -81,6 +104,7 @@ if ( ! function_exists( 'wc_get_order' ) ) {
 }
 
 class WC_Order {
+
 	private $id;
 	private $data = array();
 
@@ -98,48 +122,68 @@ class WC_Order {
 	}
 
 	public function get_id() {
-		return $this->id; }
+		return $this->id;
+	}
 	public function get_total() {
-		return $this->data['total']; }
+		return $this->data['total'];
+	}
 	public function get_status() {
-		return $this->data['status']; }
+		return $this->data['status'];
+	}
 	public function get_parent_id() {
-		return 0; }
+		return 0;
+	}
 	public function get_payment_method() {
-		return $this->data['payment_method']; }
+		return $this->data['payment_method'];
+	}
 	public function get_payment_method_title() {
-		return $this->data['payment_method_title']; }
+		return $this->data['payment_method_title'];
+	}
 	public function get_payment_tokens() {
-		return array( 1 ); }
+		return array( 1 );
+	}
 	public function get_items() {
-		return array(); }
+		return array();
+	}
 	public function get_user_id() {
-		return $this->data['user_id']; }
+		return $this->data['user_id'];
+	}
 	public function get_customer_id() {
-		return $this->data['customer_id']; }
+		return $this->data['customer_id'];
+	}
 	public function get_meta( $key, $single = false ) {
-		return ''; }
+		return '';
+	}
 	public function get_checkout_order_received_url() {
-		return 'http://example.com/order-received/' . $this->id . '/'; }
+		return 'http://example.com/order-received/' . $this->id . '/';
+	}
 
 	public function set_transaction_id( $id ) {
-		$this->data['transaction_id'] = $id; }
+		$this->data['transaction_id'] = $id;
+	}
 	public function set_payment_method( $method ) {
-		$this->data['payment_method'] = $method; }
+		$this->data['payment_method'] = $method;
+	}
 	public function set_payment_method_title( $title ) {
-		$this->data['payment_method_title'] = $title; }
+		$this->data['payment_method_title'] = $title;
+	}
 	public function update_meta_data( $key, $value ) {
-		return $this; }
+		return $this;
+	}
 	public function update_status( $status, $note = '' ) {
 		$this->data['status'] = $status;
-		return true; }
+		return true;
+	}
 
 	public function payment_complete() {
-		$this->data['status'] = 'completed'; }
+		$this->data['status'] = 'completed';
+	}
 	public function save() {
-		return true; }
+		return true;
+	}
 	public function add_payment_token( $token ) {
-		return true; }
+		return true;
+	}
 }
 
 if ( ! function_exists( 'wcs_is_subscription' ) ) {
@@ -168,5 +212,5 @@ if ( ! function_exists( 'wcs_get_users_subscriptions' ) ) {
 
 
 if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
-	require_once __DIR__ . '/woocommerce-blocks-mock.php';
+	include_once __DIR__ . '/woocommerce-blocks-mock.php';
 }

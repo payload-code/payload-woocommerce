@@ -17,8 +17,8 @@ defined( 'ABSPATH' ) || exit;
  * creating a new customer if one doesn't exist. For customer creation, use
  * get_payload_customer_id() instead.
  *
- * @since 1.4.0
- * @param int $user_id WordPress user ID.
+ * @since  1.4.0
+ * @param  int $user_id WordPress user ID.
  * @return string|false Payload customer ID or false if not found.
  */
 function payload_get_customer_id_meta( $user_id ) {
@@ -30,9 +30,9 @@ function payload_get_customer_id_meta( $user_id ) {
  *
  * Helper function to store a Payload customer ID in WordPress user meta.
  *
- * @since 1.4.0
- * @param int    $user_id              WordPress user ID.
- * @param string $payload_customer_id  Payload customer ID to store.
+ * @since  1.4.0
+ * @param  int    $user_id             WordPress user ID.
+ * @param  string $payload_customer_id Payload customer ID to store.
  * @return int|bool Meta ID on success, false on failure.
  */
 function payload_update_customer_id_meta( $user_id, $payload_customer_id ) {
@@ -45,8 +45,8 @@ function payload_update_customer_id_meta( $user_id, $payload_customer_id ) {
  * Retrieves the Payload customer ID from user meta, or creates a new Payload
  * customer if one doesn't exist. Searches by email first, then creates if needed.
  *
- * @since 1.0.0
- * @param int|null $user_id WordPress user ID. If null, uses current user.
+ * @since  1.0.0
+ * @param  int|null $user_id WordPress user ID. If null, uses current user.
  * @return string|null Payload customer ID or null if unable to create.
  */
 function get_payload_customer_id( $user_id = null ) {
@@ -151,7 +151,7 @@ function payload_save_billing_company_to_order( $order, $data ) {
 		// Set on the order
 		$order->set_billing_company( $company );
 
-		$user_id = payload_get_order_customer_id( $order );
+		$user_id = payload_get_order_user_id( $order );
 
 		// Also persist on the user, if logged in
 		if ( $user_id ) {
@@ -226,9 +226,9 @@ add_action( 'woocommerce_created_customer', 'payload_create_customer_on_registra
  * checkout process.
  *
  * @since 1.0.0
- * @param int      $order_id     Order ID being processed.
- * @param array    $posted_data  Posted checkout data.
- * @param WC_Order $order        Order object.
+ * @param int      $order_id    Order ID being processed.
+ * @param array    $posted_data Posted checkout data.
+ * @param WC_Order $order       Order object.
  */
 function payload_ensure_customer_after_checkout( $order_id, $posted_data, $order ) {
 	$customer_id = $order->get_customer_id();
@@ -247,8 +247,8 @@ add_action( 'woocommerce_checkout_order_processed', 'payload_ensure_customer_aft
 /**
  * Find a WordPress user by their Payload customer ID.
  *
- * @since 1.4.0
- * @param string $payload_customer_id Payload customer ID to search for.
+ * @since  1.4.0
+ * @param  string $payload_customer_id Payload customer ID to search for.
  * @return int|null User ID if found, null otherwise.
  */
 function payload_find_user_by_customer_id( $payload_customer_id ) {

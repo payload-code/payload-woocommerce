@@ -13,6 +13,7 @@ use Mockery as m;
 
 class PayloadUtilityFunctions_Test extends UnitTestCase {
 
+
 	public function test_payload_handle_admin_notice_trigger_sets_transient() {
 		$_GET = array( 'my_notice' => '1' );
 
@@ -21,7 +22,7 @@ class PayloadUtilityFunctions_Test extends UnitTestCase {
 			->andReturn( true );
 
 		Monkey\Functions\expect( 'get_current_user_id' )
-			->andReturn( 1 );
+		->andReturn( 1 );
 
 		Monkey\Functions\expect( 'set_transient' )
 			->once()
@@ -43,7 +44,7 @@ class PayloadUtilityFunctions_Test extends UnitTestCase {
 			->andReturn( true );
 
 		Monkey\Functions\expect( 'get_current_user_id' )
-			->andReturn( 1 );
+		->andReturn( 1 );
 
 		Monkey\Functions\expect( 'get_transient' )
 			->with( 'my_admin_flash_notice_1' )

@@ -7,6 +7,7 @@ use Payload\API as pl;
 
 class Test_WC_Payload_Gateway extends UnitTestCase {
 
+
 	private $gateway;
 
 	protected function setUp(): void {
@@ -129,12 +130,12 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 				Mockery::on(
 					function ( $message ) {
 						return strpos( $message, 'Zero-amount order detected' ) !== false ||
-							   strpos( $message, 'Payment Process' ) !== false;
+								strpos( $message, 'Payment Process' ) !== false;
 					}
 				),
 				Mockery::type( 'array' )
 			)
-			->andReturn( true );
+		->andReturn( true );
 		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
 
 		$result = $this->gateway->process_payment( 123 );
@@ -227,7 +228,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		);
 
 		Monkey\Functions\expect( 'get_current_user_id' )
-			->andReturn( 1 );
+		->andReturn( 1 );
 
 		// Mock the Payload\PaymentMethod construction and update call
 		// We'll use a more direct approach without conflicting aliases
@@ -401,8 +402,8 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 			->with( array( 'customer_id' => 'cust_123' ) )
 			->andReturnUsing(
 				function ( $data ) use ( $payment_mock ) {
-					$payment_mock->customer_id = $data['customer_id'];
-					return true;
+						$payment_mock->customer_id = $data['customer_id'];
+						return true;
 				}
 			);
 
@@ -467,17 +468,17 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 			->andReturn( array( 'sub_123' => $subscription_mock ) );
 
 		Monkey\Functions\expect( 'wc_get_order' )
-			->andReturnUsing(
-				function ( $order_id ) use ( $order_mock, $parent_order_mock ) {
-					if ( $order_id == 123 ) {
+		->andReturnUsing(
+			function ( $order_id ) use ( $order_mock, $parent_order_mock ) {
+				if ( $order_id == 123 ) {
 						return $order_mock;
-					}
-					if ( $order_id == 456 ) {
-						return $parent_order_mock;
-					}
-					return null;
 				}
-			);
+				if ( $order_id == 456 ) {
+					return $parent_order_mock;
+				}
+				return null;
+			}
+		);
 
 		$logger_mock = Mockery::mock();
 		$logger_mock->shouldReceive( 'info' )->andReturn( true );

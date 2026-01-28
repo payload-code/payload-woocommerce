@@ -14,6 +14,7 @@ use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodTyp
 
 final class WC_Payload_Blocks extends AbstractPaymentMethodType {
 
+
 	private $gateway;
 	protected $name = 'payload';
 

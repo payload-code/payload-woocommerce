@@ -58,7 +58,7 @@ if ( ( ! $isUnitTest && ! $isIntegrationTest ) || ( $isUnitTest && $isIntegratio
 
 // Only load Payload mocks for unit tests
 if ( $isUnitTest ) {
-	require_once __DIR__ . '/mocks/payload-mocks.php';
+	include_once __DIR__ . '/mocks/payload-mocks.php';
 }
 
 // Integration tests will use real Payload SDK (no mocks loaded)
@@ -68,11 +68,11 @@ if ( $isUnitTest ) {
 
 // Load WordPress test environment if available
 if ( getenv( 'WP_TESTS_DIR' ) ) {
-	require_once getenv( 'WP_TESTS_DIR' ) . '/includes/functions.php';
-	require_once getenv( 'WP_TESTS_DIR' ) . '/includes/bootstrap.php';
+	include_once getenv( 'WP_TESTS_DIR' ) . '/includes/functions.php';
+	include_once getenv( 'WP_TESTS_DIR' ) . '/includes/bootstrap.php';
 } else {
 	// Mock WordPress functions when WP test environment isn't available
-	require_once __DIR__ . '/mocks/wordpress-mocks.php';
+	include_once __DIR__ . '/mocks/wordpress-mocks.php';
 }
 // 2. Load our stubs so classes/methods exist before plugin code runs
 require_once __DIR__ . '/stubs/wc-and-payload-stubs.php';

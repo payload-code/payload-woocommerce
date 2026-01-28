@@ -15,6 +15,7 @@ use Mockery;
 
 abstract class UnitTestCase extends TestCase {
 
+
 	/**
 	 * Set up test environment before each test
 	 */

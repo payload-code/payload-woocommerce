@@ -13,6 +13,7 @@ use Mockery as m;
 
 class PayloadCustomerFunctions_Test extends UnitTestCase {
 
+
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -207,7 +208,7 @@ class PayloadCustomerFunctions_Test extends UnitTestCase {
 			->andReturn( '' );
 
 		Monkey\Functions\expect( 'update_user_meta' )
-			->with( 123, PAYLOAD_CUSTOMER_ID_META_KEY, 'cust_123' );
+		->with( 123, PAYLOAD_CUSTOMER_ID_META_KEY, 'cust_123' );
 
 		Monkey\Functions\expect( 'setup_payload_api' )->once();
 		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );

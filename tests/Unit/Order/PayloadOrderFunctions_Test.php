@@ -13,6 +13,7 @@ use Mockery as m;
 
 class PayloadOrderFunctions_Test extends UnitTestCase {
 
+
 	public function test_payload_subscription_payment_method_to_display() {
 		$subscription_mock = Mockery::mock();
 		$subscription_mock->shouldReceive( 'get_parent_id' )->andReturn( 456 );

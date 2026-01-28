@@ -14,6 +14,7 @@ use Mockery;
 
 class PayloadAPIFunctions_Test extends IntegrationTestCase {
 
+
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -56,9 +57,9 @@ class PayloadAPIFunctions_Test extends IntegrationTestCase {
 						'payment' => array(
 							'customer_id' => $customer_id,
 						),
-          ),
+					),
 				),
-        "type" => "client"
+				'type'   => 'client',
 			)
 		);
 
@@ -102,7 +103,7 @@ class PayloadAPIFunctions_Test extends IntegrationTestCase {
 						),
 					),
 				),
-        "type"=>"client"
+				'type'   => 'client',
 			)
 		);
 
