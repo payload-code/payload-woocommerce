@@ -16,9 +16,14 @@
         "brain/monkey": "^2.6"
     },
     "scripts": {
-        "test": "phpunit",
+        "test": [
+            "@test:unit",
+            "@test:integration"
+        ],
+        "test:unit": "phpunit --testsuite \"Unit Tests\"",
+        "test:integration": "phpunit --testsuite \"Integration Tests\"",
         "test:coverage": "phpunit --coverage-html coverage/",
-        "phpcs": "phpcs --standard=WordPress .",
-        "phpcbf": "phpcbf --standard=WordPress ."
+        "phpcs": "phpcs --standard=WordPress includes tests payload-woocommerce.php",
+        "phpcbf": "phpcbf --standard=WordPress includes tests payload-woocommerce.php"
     }
 }

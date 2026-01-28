@@ -76,7 +76,6 @@ const Content = ( props ) => {
 		const unsubscribe = onPaymentSetup( async () => {
 			try {
 				const result = await paymentFormRef.current.submit();
-                console.log('Payload payment setup result:', result);
 				return {
 					type: emitResponse.responseTypes.SUCCESS,
 					meta: {
@@ -107,6 +106,10 @@ const Content = ( props ) => {
 		emitResponse.responseTypes.SUCCESS,
 		onPaymentSetup,
 	] );
+
+	if ( ! clientToken ) {
+		return;
+	}
 
 	return (
 		<>
@@ -188,6 +191,10 @@ const AddPaymentMethod = () => {
 		}
 	}, [ paymentMethodId ] );
 
+	if ( ! clientToken ) {
+		return;
+	}
+
 	return (
 		<>
 			<PaymentMethodForm
@@ -256,13 +263,11 @@ const mountPaymentMethodForm = () => {
 	}
 };
 
-// Expose a single global that mounts the payment form ONCE
-// Expose a single global that mounts the payment form (handles lazy / re-renders)
+// Expose a single global that mounts the payment form ONCE (handles lazy / re-renders)
 window.plMountPaymentMethodForm = ( () => {
 	const TARGET_SELECTOR = '#payload-add-payment-method';
 
 	let mountedContainer = null; // track which exact element we mounted into
-	let pending = false;
 	let observer = null;
 
 	// --- helpers -------------------------------------------------------------
@@ -296,8 +301,8 @@ window.plMountPaymentMethodForm = ( () => {
 	const onLoad = () => {
 		const container = document.querySelector( TARGET_SELECTOR );
 
-		// If we have a container or had previously found it (pending), mount now.
-		if ( container || ( pending && container ) ) {
+		// If we have a container, mount now.
+		if ( container ) {
 			actuallyMount( container );
 			cleanup();
 		}
@@ -312,12 +317,7 @@ window.plMountPaymentMethodForm = ( () => {
 		if ( document.readyState === 'complete' ) {
 			actuallyMount( container );
 			// DO NOT clean up the observer here – we want to handle later re-renders
-			return;
 		}
-
-		// DOM seen but page not fully loaded yet:
-		// mark as pending and let onLoad() do the actual mount.
-		pending = true;
 	};
 
 	const initObserver = () => {
