@@ -103,21 +103,8 @@ function payload_register_rest_api_routes() {
 		array(
 			'methods'             => 'GET',
 			'callback'            => 'get_intent',
-			'permission_callback' => 'payload_rest_permission_check',
 		)
 	);
 }
 add_action( 'rest_api_init', 'payload_register_rest_api_routes' );
 
-/**
- * Permission callback for Payload REST API endpoints.
- *
- * Checks if the current user is logged in before allowing access to
- * Payload REST API endpoints.
- *
- * @since  1.0.0
- * @return bool True if user is logged in, false otherwise.
- */
-function payload_rest_permission_check() {
-	return is_user_logged_in();
-}

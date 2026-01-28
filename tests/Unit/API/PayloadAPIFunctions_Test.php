@@ -84,23 +84,4 @@ class PayloadAPIFunctions_Test extends UnitTestCase {
 		$this->assertTrue( true );
 	}
 
-	public function test_payload_rest_permission_check_allows_logged_in_users() {
-		Monkey\Functions\expect( 'is_user_logged_in' )
-			->once()
-			->andReturn( true );
-
-		$result = payload_rest_permission_check();
-
-		$this->assertTrue( $result );
-	}
-
-	public function test_payload_rest_permission_check_blocks_guests() {
-		Monkey\Functions\expect( 'is_user_logged_in' )
-			->once()
-			->andReturn( false );
-
-		$result = payload_rest_permission_check();
-
-		$this->assertFalse( $result );
-	}
 }
