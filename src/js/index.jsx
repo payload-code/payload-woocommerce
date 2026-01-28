@@ -107,6 +107,8 @@ const Content = ( props ) => {
 		onPaymentSetup,
 	] );
 
+	if ( ! clientToken ) return;
+
 	return (
 		<>
 			{ decodeEntities( settings.description || '' ) }
@@ -187,6 +189,8 @@ const AddPaymentMethod = () => {
 		}
 	}, [ paymentMethodId ] );
 
+	if ( ! clientToken ) return;
+
 	return (
 		<>
 			<PaymentMethodForm
@@ -255,13 +259,11 @@ const mountPaymentMethodForm = () => {
 	}
 };
 
-// Expose a single global that mounts the payment form ONCE
-// Expose a single global that mounts the payment form (handles lazy / re-renders)
+// Expose a single global that mounts the payment form ONCE (handles lazy / re-renders)
 window.plMountPaymentMethodForm = ( () => {
 	const TARGET_SELECTOR = '#payload-add-payment-method';
 
 	let mountedContainer = null; // track which exact element we mounted into
-	let pending = false;
 	let observer = null;
 
 	// --- helpers -------------------------------------------------------------
@@ -295,8 +297,8 @@ window.plMountPaymentMethodForm = ( () => {
 	const onLoad = () => {
 		const container = document.querySelector( TARGET_SELECTOR );
 
-		// If we have a container or had previously found it (pending), mount now.
-		if ( container || ( pending && container ) ) {
+		// If we have a container, mount now.
+		if ( container ) {
 			actuallyMount( container );
 			cleanup();
 		}
@@ -315,8 +317,7 @@ window.plMountPaymentMethodForm = ( () => {
 		}
 
 		// DOM seen but page not fully loaded yet:
-		// mark as pending and let onLoad() do the actual mount.
-		pending = true;
+		// Let onLoad() do the actual mount when the page finishes loading.
 	};
 
 	const initObserver = () => {
