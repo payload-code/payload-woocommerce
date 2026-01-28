@@ -464,7 +464,11 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				)
 			);
 			$this->handle_order_payment( $order, $payment );
-		} catch ( Exception $e ) {
+		} catch ( Payload\Exceptions\BadRequest $e ) {
+			throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage() );
+		} catch ( Payload\Exceptions\InvalidAttributes $e ) {
+			throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage() );
+		} catch ( Payload\Exceptions\TransactionDeclined $e ) {
 			throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage() );
 		}
 		return $payment;
