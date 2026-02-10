@@ -30,7 +30,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		$this->assertArrayHasKey( 'enabled', $this->gateway->form_fields );
 		$this->assertArrayHasKey( 'api_key', $this->gateway->form_fields );
 		$this->assertEquals( 'checkbox', $this->gateway->form_fields['enabled']['type'] );
-		$this->assertEquals( 'password', $this->gateway->form_fields['api_key']['type'] );
+		$this->assertEquals( 'secret', $this->gateway->form_fields['api_key']['type'] );
 	}
 
 	public function test_payment_scripts_skips_admin() {

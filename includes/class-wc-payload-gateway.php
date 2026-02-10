@@ -78,10 +78,88 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			),
 			'api_key' => array(
 				'title' => __( 'API Key', 'payload' ),
-				'type'  => 'password',
-				'label' => __( 'API Key', 'payload' ),
+				'type'  => 'secret',
 			),
 		);
+	}
+
+	/**
+	 * Render a write-only secret field. The saved value is never sent to the browser.
+	 *
+	 * @since  1.5.0
+	 * @param  string $key  Field key.
+	 * @param  array  $data Field data.
+	 * @return string HTML output.
+	 */
+	public function generate_secret_html( $key, $data ) {
+		$field_key = $this->get_field_key( $key );
+		$defaults  = array(
+			'title'       => '',
+			'class'       => '',
+			'css'         => '',
+			'placeholder' => '',
+			'desc_tip'    => false,
+			'description' => '',
+		);
+		$data      = wp_parse_args( $data, $defaults );
+
+		$saved_value = $this->get_option( $key );
+		$has_value   = (bool) $saved_value;
+		$description = $has_value
+			? __( 'An API key is saved. Enter a new value to replace it.', 'payload' )
+			: $data['description'];
+		$placeholder = $has_value
+			? '••••••••' . substr( $saved_value, -6 )
+			: $data['placeholder'];
+
+		ob_start();
+		?>
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<label for="<?php echo esc_attr( $field_key ); ?>">
+					<?php echo wp_kses_post( $data['title'] ); ?>
+				</label>
+			</th>
+			<td class="forminp">
+				<fieldset>
+					<legend class="screen-reader-text"><span><?php echo wp_kses_post( $data['title'] ); ?></span></legend>
+					<input
+						class="input-text regular-input <?php echo esc_attr( $data['class'] ); ?>"
+						type="password"
+						name="<?php echo esc_attr( $field_key ); ?>"
+						id="<?php echo esc_attr( $field_key ); ?>"
+						style="<?php echo esc_attr( $data['css'] ); ?>"
+						value=""
+						placeholder="<?php echo esc_attr( $placeholder ); ?>"
+						autocomplete="new-password"
+					/>
+					<?php if ( ! empty( $description ) ) : ?>
+						<p class="description"><?php echo wp_kses_post( $description ); ?></p>
+					<?php endif; ?>
+				</fieldset>
+			</td>
+		</tr>
+		<?php
+
+		return ob_get_clean();
+	}
+
+	/**
+	 * Validate the secret field. Keeps the existing value if the field is left empty.
+	 *
+	 * @since  1.5.0
+	 * @param  string $key   Field key.
+	 * @param  string $value Posted value.
+	 * @return string Validated value.
+	 */
+	public function validate_secret_field( $key, $value ) {
+		$value = is_null( $value ) ? '' : trim( $value );
+
+		if ( '' === $value ) {
+			return $this->get_option( $key );
+		}
+
+		return sanitize_text_field( $value );
 	}
 
 	/**

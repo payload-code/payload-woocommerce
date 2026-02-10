@@ -43,7 +43,6 @@ namespace Payload {
 		public $payment_method;
 		public $status;
 
-
 		public static function get( $id ) {
 			$mock                    = new self();
 			$mock->id                = $id;

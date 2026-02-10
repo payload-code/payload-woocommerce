@@ -1,16 +1,14 @@
-name: Release Candidate
+name: Release
 
 on:
-  push:
-    tags:
-      - '*-rc*'
-      - 'v*rc*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  build-and-upload:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -21,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install Node dependencies (if any)
         run: |
@@ -38,7 +36,7 @@ jobs:
       - name: Setup PHP + Composer
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: "8.1"
           tools: composer
 
       - name: Install Composer dependencies (if any)
@@ -50,26 +48,20 @@ jobs:
       - name: Prepare ZIP artifact
         id: make_zip
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ github.event.release.tag_name }}"
           OUTDIR=release
           mkdir -p "$OUTDIR"
-          ZIPFILE="$OUTDIR/${TAG}.zip"
+          ZIPFILE="$OUTDIR/payload-woocommerce.zip"
 
-          # Zip the full project (including vendor, build, etc.)
-          # Exclude git metadata, GitHub workflows, and the release folder itself
           zip -r "$ZIPFILE" . \
-            -x ".git/*" ".github/*" "release/*" "node_modules/*" 
+            -x ".git/*" ".github/*" "release/*" "node_modules/*"
 
           echo "zip_path=$ZIPFILE" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release + upload ZIP
-        uses: softprops/action-gh-release@v2
+      - name: Upload ZIP to release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          prerelease: true
-          draft: false
-          files: ${{ steps.make_zip.outputs.zip_path }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "${{ steps.make_zip.outputs.zip_path }}" \
+            --clobber

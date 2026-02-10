@@ -65,13 +65,16 @@ const Content = ( props ) => {
 	const { eventRegistration, emitResponse, billing } = props;
 	const { onPaymentSetup } = eventRegistration;
 	const [ clientToken, setClientToken ] = useState();
+	const [ fetchError, setFetchError ] = useState();
 	const paymentFormRef = useRef( null );
 	const hasSubscription = !! props.cartData.extensions?.subscriptions?.length;
 
 	useEffect( () => {
-		wp.apiFetch( { path: 'wc/v3/payload_client_token' } ).then( ( data ) =>
-			setClientToken( data.client_token )
-		);
+		wp.apiFetch( { path: 'wc/v3/payload_client_token' } )
+			.then( ( data ) => setClientToken( data.client_token ) )
+			.catch( ( err ) => {
+				setFetchError( err?.message || 'Unable to load payment form.' );
+			} );
 
 		const unsubscribe = onPaymentSetup( async () => {
 			try {
@@ -106,6 +109,10 @@ const Content = ( props ) => {
 		emitResponse.responseTypes.SUCCESS,
 		onPaymentSetup,
 	] );
+
+	if ( fetchError ) {
+		return <div className="pl-form-error">{ fetchError }</div>;
+	}
 
 	if ( ! clientToken ) {
 		return;
@@ -148,7 +155,13 @@ const AddPaymentMethod = () => {
 	useEffect( () => {
 		wp.apiFetch( {
 			path: 'wc/v3/payload_client_token?type=payment_method',
-		} ).then( ( data ) => setClientToken( data.client_token ) );
+		} )
+			.then( ( data ) => setClientToken( data.client_token ) )
+			.catch( ( err ) => {
+				setGeneralErrorMessage(
+					err?.message || 'Unable to load payment form.'
+				);
+			} );
 
 		const form = getForm();
 		const submitBtn = document.getElementById( 'place_order' );
@@ -192,6 +205,9 @@ const AddPaymentMethod = () => {
 	}, [ paymentMethodId ] );
 
 	if ( ! clientToken ) {
+		if ( generalErrorMessage ) {
+			return <div className="pl-form-error">{ generalErrorMessage }</div>;
+		}
 		return;
 	}
 
@@ -252,25 +268,15 @@ const BlockGateway = {
 
 registerPaymentMethod( BlockGateway );
 
-const mountPaymentMethodForm = () => {
-	if ( document.querySelector( '#payload-add-payment-method' ) ) {
-		const domContainer = document.querySelector(
-			'#payload-add-payment-method'
-		);
-
-		const root = ReactDOM.createRoot( domContainer );
-		root.render( <AddPaymentMethod /> );
-	}
-};
-
 // Expose a single global that mounts the payment form ONCE (handles lazy / re-renders)
+// IMPORTANT: This must remain an IIFE so that mountedContainer, currentRoot, and observer
+// are shared across calls. Converting to a plain function would reset state on every invocation.
 window.plMountPaymentMethodForm = ( () => {
-	const TARGET_SELECTOR = '#payload-add-payment-method';
+	const TARGET_ID = 'payload-add-payment-method';
 
 	let mountedContainer = null; // track which exact element we mounted into
+	let currentRoot = null; // track the React root so we can unmount on re-renders
 	let observer = null;
-
-	// --- helpers -------------------------------------------------------------
 
 	const actuallyMount = ( container ) => {
 		if ( ! container ) {
@@ -285,10 +291,14 @@ window.plMountPaymentMethodForm = ( () => {
 			return;
 		}
 
-		// If your function can take a container, pass it in:
-		// mountPaymentMethodForm(container);
-		mountPaymentMethodForm();
+		// Unmount the previous React root to clean up subscriptions and state.
+		if ( currentRoot ) {
+			currentRoot.unmount();
+			currentRoot = null;
+		}
 
+		currentRoot = ReactDOM.createRoot( container );
+		currentRoot.render( <AddPaymentMethod /> );
 		mountedContainer = container;
 	};
 
@@ -299,9 +309,8 @@ window.plMountPaymentMethodForm = ( () => {
 	};
 
 	const onLoad = () => {
-		const container = document.querySelector( TARGET_SELECTOR );
+		const container = document.getElementById( TARGET_ID );
 
-		// If we have a container, mount now.
 		if ( container ) {
 			actuallyMount( container );
 			cleanup();
@@ -325,11 +334,17 @@ window.plMountPaymentMethodForm = ( () => {
 			return;
 		}
 
-		observer = new MutationObserver( () => {
-			// On any DOM change, see if our container exists and handle it
-			const container = document.querySelector( TARGET_SELECTOR );
-			if ( container ) {
-				handleFound( container );
+		observer = new MutationObserver( ( mutations ) => {
+			for ( const mutation of mutations ) {
+				for ( const node of mutation.addedNodes ) {
+					if (
+						node.nodeType === Node.ELEMENT_NODE &&
+						node.id === TARGET_ID
+					) {
+						handleFound( node );
+						return;
+					}
+				}
 			}
 		} );
 
@@ -340,8 +355,7 @@ window.plMountPaymentMethodForm = ( () => {
 	};
 
 	const init = () => {
-		// First, if the container already exists, handle it
-		const container = document.querySelector( TARGET_SELECTOR );
+		const container = document.getElementById( TARGET_ID );
 		if ( container ) {
 			handleFound( container );
 		}
