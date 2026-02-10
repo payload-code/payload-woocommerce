@@ -9,7 +9,7 @@ import {
 } from 'payload-react';
 
 import '../css/style.scss';
-/* global MutationObserver */
+/* global MutationObserver, Node */
 
 const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
 const { getSetting } = window.wc.wcSettings;
