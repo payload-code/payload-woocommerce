@@ -48,7 +48,6 @@ jobs:
       - name: Prepare ZIP artifact
         id: make_zip
         run: |
-          TAG="${{ github.event.release.tag_name }}"
           OUTDIR=release
           mkdir -p "$OUTDIR"
           ZIPFILE="$OUTDIR/payload-woocommerce.zip"
