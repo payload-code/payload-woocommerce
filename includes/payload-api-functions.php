@@ -74,6 +74,17 @@ function get_intent( $data ) {
 		);
 
 		return array( 'client_token' => $clientToken->id );
+	} catch ( Payload\Exceptions\Unauthorized $e ) {
+		$logger = wc_get_logger();
+		$logger->error(
+			'Failed to create Payload client token: ' . $e->getMessage(),
+			array( 'source' => 'payload-woocommerce' )
+		);
+		return new WP_Error(
+			'payload_token_error',
+			__( 'Unable to initialize payment form: Invalid API Key.', 'payload' ),
+			array( 'status' => 400 )
+		);
 	} catch ( Exception $e ) {
 		$logger = wc_get_logger();
 		$logger->error(
@@ -101,10 +112,9 @@ function payload_register_rest_api_routes() {
 		'wc/v3',
 		'payload_client_token',
 		array(
-			'methods'             => 'GET',
-			'callback'            => 'get_intent',
+			'methods'  => 'GET',
+			'callback' => 'get_intent',
 		)
 	);
 }
 add_action( 'rest_api_init', 'payload_register_rest_api_routes' );
-

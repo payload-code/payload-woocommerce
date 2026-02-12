@@ -36,6 +36,19 @@ https://support.payload.com
 
 == Changelog ==
 
+= v1.4.1 =
+
+* Truncate API-key in settings
+* Improved error handling during form initialization
+
+= v1.4.0 =
+
+* Email-based customer lookup
+* Customer data syncing
+* Added company field support
+* Auto-complete virtual orders
+* Improved validation and error handling
+
 = v1.3.0 =
 
 * Fixed customer ID handling in get_payload_customer_id() 

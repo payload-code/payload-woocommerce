@@ -83,5 +83,4 @@ class PayloadAPIFunctions_Test extends UnitTestCase {
 
 		$this->assertTrue( true );
 	}
-
 }

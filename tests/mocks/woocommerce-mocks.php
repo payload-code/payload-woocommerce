@@ -25,6 +25,12 @@ class WC_Payment_Gateway {
 	public function is_available() {
 		return true;
 	}
+	public function get_option( $key, $default = '' ) {
+		return $this->settings[ $key ] ?? $default;
+	}
+	public function get_field_key( $key ) {
+		return 'woocommerce_' . $this->id . '_' . $key;
+	}
 	public function get_return_url( $order ) {
 		return 'http://example.com/thank-you/';
 	}
