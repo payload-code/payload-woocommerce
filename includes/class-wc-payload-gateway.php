@@ -504,8 +504,11 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$this->associate_customer_with_payment( $payment, $user_id_from_order );
 		}
 
-		// Create and set token if subscription
-		if ( class_exists( 'WC_Subscriptions_Order' ) && WC_Subscriptions_Order::order_contains_subscription( $order->get_id() ) ) {
+		// Create and set token if subscription, or if the payment method should be kept active for a known user
+		$has_subscription = class_exists( 'WC_Subscriptions_Order' ) && WC_Subscriptions_Order::order_contains_subscription( $order->get_id() );
+		$should_tokenize  = $has_subscription || ( ! empty( $payment->payment_method['keep_active'] ) && $user_id_from_order );
+
+		if ( $should_tokenize ) {
 			$token = $this->create_token( $payment->payment_method, $user_id_from_order );
 			$this->update_order_payment_method_token( $order, $token );
 		} else {

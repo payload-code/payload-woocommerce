@@ -394,6 +394,134 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		$this->assertEquals( 'processed', $result->status );
 	}
 
+	public function test_process_client_side_payment_tokenizes_when_keep_active_and_user_id() {
+		\Payload\Transaction::$payment_method_override = array(
+			'id'          => 'pm_123',
+			'description' => 'Visa ending in 1111',
+			'keep_active' => true,
+			'card'        => array(
+				'card_brand'  => 'visa',
+				'card_number' => '4111111111111111',
+				'expiry'      => '12/2025',
+			),
+		);
+
+		$order_mock = Mockery::mock( 'WC_Order' );
+		$order_mock->shouldReceive( 'get_id' )->andReturn( 123 );
+		$order_mock->shouldReceive( 'get_total' )->andReturn( 100.00 );
+
+		$subscription_order_mock = Mockery::mock( 'alias:WC_Subscriptions_Order' );
+		$subscription_order_mock->shouldReceive( 'order_contains_subscription' )
+			->with( 123 )
+			->andReturn( false );
+
+		$token_mock = Mockery::mock( 'WC_Payment_Token_CC' );
+
+		$gateway = Mockery::mock( 'WC_Payload_Gateway' )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+		$gateway->shouldReceive( 'create_token' )
+			->once()
+			->with( Mockery::type( 'array' ), 1 )
+			->andReturn( $token_mock );
+		$gateway->shouldReceive( 'update_order_payment_method_token' )
+			->once()
+			->with( $order_mock, $token_mock );
+		$gateway->shouldNotReceive( 'update_order_payment_method' );
+
+		$reflection = new ReflectionClass( 'WC_Payload_Gateway' );
+		$method     = $reflection->getMethod( 'process_client_side_payment' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $gateway, 'txn_123', $order_mock, 1 );
+
+		$this->assertEquals( 'processed', $result->status );
+
+		\Payload\Transaction::$payment_method_override = null;
+	}
+
+	public function test_process_client_side_payment_does_not_tokenize_for_guest_even_when_keep_active() {
+		\Payload\Transaction::$payment_method_override = array(
+			'id'          => 'pm_123',
+			'description' => 'Visa ending in 1111',
+			'keep_active' => true,
+			'card'        => array(
+				'card_brand'  => 'visa',
+				'card_number' => '4111111111111111',
+				'expiry'      => '12/2025',
+			),
+		);
+
+		$order_mock = Mockery::mock( 'WC_Order' );
+		$order_mock->shouldReceive( 'get_id' )->andReturn( 123 );
+		$order_mock->shouldReceive( 'get_total' )->andReturn( 100.00 );
+
+		$subscription_order_mock = Mockery::mock( 'alias:WC_Subscriptions_Order' );
+		$subscription_order_mock->shouldReceive( 'order_contains_subscription' )
+			->with( 123 )
+			->andReturn( false );
+
+		$gateway = Mockery::mock( 'WC_Payload_Gateway' )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+		$gateway->shouldNotReceive( 'create_token' );
+		$gateway->shouldNotReceive( 'update_order_payment_method_token' );
+		$gateway->shouldReceive( 'update_order_payment_method' )
+			->once()
+			->with( $order_mock, 'Visa ending in 1111', 'pm_123' );
+
+		$reflection = new ReflectionClass( 'WC_Payload_Gateway' );
+		$method     = $reflection->getMethod( 'process_client_side_payment' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $gateway, 'txn_123', $order_mock, 0 );
+
+		$this->assertEquals( 'processed', $result->status );
+
+		\Payload\Transaction::$payment_method_override = null;
+	}
+
+	public function test_process_client_side_payment_does_not_tokenize_when_keep_active_false() {
+		\Payload\Transaction::$payment_method_override = array(
+			'id'          => 'pm_123',
+			'description' => 'Visa ending in 1111',
+			'keep_active' => false,
+			'card'        => array(
+				'card_brand'  => 'visa',
+				'card_number' => '4111111111111111',
+				'expiry'      => '12/2025',
+			),
+		);
+
+		$order_mock = Mockery::mock( 'WC_Order' );
+		$order_mock->shouldReceive( 'get_id' )->andReturn( 123 );
+		$order_mock->shouldReceive( 'get_total' )->andReturn( 100.00 );
+
+		$subscription_order_mock = Mockery::mock( 'alias:WC_Subscriptions_Order' );
+		$subscription_order_mock->shouldReceive( 'order_contains_subscription' )
+			->with( 123 )
+			->andReturn( false );
+
+		$gateway = Mockery::mock( 'WC_Payload_Gateway' )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+		$gateway->shouldNotReceive( 'create_token' );
+		$gateway->shouldNotReceive( 'update_order_payment_method_token' );
+		$gateway->shouldReceive( 'update_order_payment_method' )
+			->once()
+			->with( $order_mock, 'Visa ending in 1111', 'pm_123' );
+
+		$reflection = new ReflectionClass( 'WC_Payload_Gateway' );
+		$method     = $reflection->getMethod( 'process_client_side_payment' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $gateway, 'txn_123', $order_mock, 1 );
+
+		$this->assertEquals( 'processed', $result->status );
+
+		\Payload\Transaction::$payment_method_override = null;
+	}
+
 	public function test_associate_customer_with_payment_success() {
 		$payment_mock                    = Mockery::mock();
 		$payment_mock->customer_id       = null;
