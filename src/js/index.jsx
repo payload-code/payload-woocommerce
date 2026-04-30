@@ -64,7 +64,8 @@ const PaymentMethodFields = () => {
 };
 
 const Content = ( props ) => {
-	const { eventRegistration, emitResponse, billing, activePaymentMethod } = props;
+	const { eventRegistration, emitResponse, billing, activePaymentMethod } =
+		props;
 	const { onPaymentSetup } = eventRegistration;
 	const [ clientToken, setClientToken ] = useState();
 	const [ fetchError, setFetchError ] = useState();
