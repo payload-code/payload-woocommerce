@@ -68,6 +68,7 @@ const Content = ( props ) => {
 	const [ fetchError, setFetchError ] = useState();
 	const paymentFormRef = useRef( null );
 	const hasSubscription = !! props.cartData.extensions?.subscriptions?.length;
+	const isGuest = ! wp.data.select( 'wc/store/checkout' )?.getCustomerId();
 
 	useEffect( () => {
 		wp.apiFetch( { path: 'wc/v3/payload_client_token' } )
@@ -129,7 +130,7 @@ const Content = ( props ) => {
 				payment={ {
 					amount: billing.cartTotal.value / 100,
 					payment_method: {
-						keep_active: hasSubscription,
+						keep_active: hasSubscription || ! isGuest,
 					},
 				} }
 			>

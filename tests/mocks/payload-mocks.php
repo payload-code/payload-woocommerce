@@ -43,6 +43,9 @@ namespace Payload {
 		public $payment_method;
 		public $status;
 
+		// Tests may set this to override the payment_method array returned by ::get()
+		public static $payment_method_override = null;
+
 		public static function get( $id ) {
 			$mock                    = new self();
 			$mock->id                = $id;
@@ -50,7 +53,7 @@ namespace Payload {
 			$mock->ref_number        = 'REF123';
 			$mock->customer_id       = 'cust_existing';
 			$mock->payment_method_id = 'pm_123';
-			$mock->payment_method    = array(
+			$mock->payment_method    = self::$payment_method_override ?? array(
 				'id'          => 'pm_123',
 				'description' => 'Visa ending in 1111',
 				'card'        => array(
