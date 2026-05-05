@@ -16,6 +16,11 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		$this->gateway = new WC_Payload_Gateway();
 	}
 
+	protected function tearDown(): void {
+		\Payload\Transaction::$payment_method_override = null;
+		parent::tearDown();
+	}
+
 	public function test_constructor_sets_correct_properties() {
 		$this->assertEquals( 'payload', $this->gateway->id );
 		$this->assertTrue( $this->gateway->has_fields );
@@ -436,8 +441,6 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		$result = $method->invoke( $gateway, 'txn_123', $order_mock, 1 );
 
 		$this->assertEquals( 'processed', $result->status );
-
-		\Payload\Transaction::$payment_method_override = null;
 	}
 
 	public function test_process_client_side_payment_does_not_tokenize_for_guest_even_when_keep_active() {
@@ -477,8 +480,6 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		$result = $method->invoke( $gateway, 'txn_123', $order_mock, 0 );
 
 		$this->assertEquals( 'processed', $result->status );
-
-		\Payload\Transaction::$payment_method_override = null;
 	}
 
 	public function test_process_client_side_payment_does_not_tokenize_when_keep_active_false() {
@@ -518,8 +519,6 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		$result = $method->invoke( $gateway, 'txn_123', $order_mock, 1 );
 
 		$this->assertEquals( 'processed', $result->status );
-
-		\Payload\Transaction::$payment_method_override = null;
 	}
 
 	public function test_associate_customer_with_payment_success() {
