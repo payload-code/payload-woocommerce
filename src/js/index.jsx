@@ -14,7 +14,9 @@ import '../css/style.scss';
 const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
 const { getSetting } = window.wc.wcSettings;
 
-const settings = getSetting( 'payload', {} );
+const PAYMENT_METHOD_NAME = 'payload';
+
+const settings = getSetting( PAYMENT_METHOD_NAME, {} );
 const label =
 	decodeEntities( settings.title ) ||
 	window.wp.i18n.__( 'Credit/Debit Card', 'payload' );
@@ -62,7 +64,8 @@ const PaymentMethodFields = () => {
 };
 
 const Content = ( props ) => {
-	const { eventRegistration, emitResponse, billing } = props;
+	const { eventRegistration, emitResponse, billing, activePaymentMethod } =
+		props;
 	const { onPaymentSetup } = eventRegistration;
 	const [ clientToken, setClientToken ] = useState();
 	const [ fetchError, setFetchError ] = useState();
@@ -78,6 +81,10 @@ const Content = ( props ) => {
 			} );
 
 		const unsubscribe = onPaymentSetup( async () => {
+			if ( activePaymentMethod !== PAYMENT_METHOD_NAME ) {
+				return;
+			}
+
 			try {
 				const result = await paymentFormRef.current.submit();
 				return {
@@ -109,6 +116,7 @@ const Content = ( props ) => {
 		emitResponse.responseTypes.ERROR,
 		emitResponse.responseTypes.SUCCESS,
 		onPaymentSetup,
+		activePaymentMethod,
 	] );
 
 	if ( fetchError ) {
@@ -240,7 +248,7 @@ const Label = ( props ) => {
 };
 
 const BlockGateway = {
-	name: 'payload',
+	name: PAYMENT_METHOD_NAME,
 	label: <Label />,
 	content: <Content />,
 	edit: <Content />,
