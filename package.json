@@ -1,6 +1,6 @@
 {
   "name": "payload-woocommerce",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "",
   "author": "",
   "license": "GPL-2.0-or-later",
@@ -52,4 +52,3 @@
     "test:all": "npm run test:php"
   }
 }
-

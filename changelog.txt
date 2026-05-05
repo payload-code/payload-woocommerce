@@ -1,5 +1,10 @@
 == Changelog ==
 
+= v1.4.2 =
+
+* Tokenize payment method for non-guest checkouts
+* Guard onPaymentSetup callback to only run when Payload is the active payment method
+
 = v1.4.1 =
 
 * Truncate API-key in settings
