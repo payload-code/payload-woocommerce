@@ -16,7 +16,7 @@ const { getSetting } = window.wc.wcSettings;
 
 const PAYMENT_METHOD_NAME = 'payload';
 
-const settings = getSetting( 'payload', {} );
+const settings = getSetting( PAYMENT_METHOD_NAME, {} );
 const label =
 	decodeEntities( settings.title ) ||
 	window.wp.i18n.__( 'Credit/Debit Card', 'payload' );
