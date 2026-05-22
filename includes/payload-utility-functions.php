@@ -47,7 +47,7 @@ function payload_get_gateway_instance() {
  * @param int $order_id Order ID that received payment.
  */
 function payload_autocomplete_virtual_orders( $order_id ) {
-	// Check if order contains only virtual/downloadable products
+	// Check if order contains only virtual/downloadable products.
 	if ( payload_order_is_virtual( $order_id ) ) {
 		$order = wc_get_order( $order_id );
 		$order->update_status( 'completed', 'Order auto-completed because it contains only virtual products.' );
@@ -64,21 +64,22 @@ add_action( 'woocommerce_payment_complete', 'payload_autocomplete_virtual_orders
  * @since 1.0.0
  */
 function payload_handle_admin_notice_trigger() {
-	// Example trigger: append ?my_notice=1 to any wp-admin URL
+	// Example trigger: append ?my_notice=1 to any wp-admin URL.
 	if ( ! current_user_can( 'manage_options' ) ) {
 		return;
 	}
 
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only flag guarded by capability check above.
 	$my_notice = isset( $_GET['my_notice'] ) ? sanitize_text_field( wp_unslash( $_GET['my_notice'] ) ) : '';
-	if ( $my_notice === '1' ) {
+	if ( '1' === $my_notice ) {
 		set_transient(
 			'my_admin_flash_notice_' . get_current_user_id(),
 			array(
 				'message' => '✅ Settings saved successfully.',
-				'type'    => 'success', // success | warning | error | info
+				'type'    => 'success', // success | warning | error | info.
 			),
-			60
-		); // seconds
+			60 // seconds.
+		);
 	}
 }
 add_action( 'admin_init', 'payload_handle_admin_notice_trigger' );
