@@ -199,9 +199,15 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	 * @since 1.0.0
 	 */
 	public function payment_fields() {
+		if ( $this->supports( 'tokenization' ) && is_checkout() ) {
+			$this->tokenization_script();
+			$this->saved_payment_methods();
+		}
 		?>
-		<div id="payload-add-payment-method"></div>
-		<script>if(window.plMountPaymentMethodForm) window.plMountPaymentMethodForm()</script>
+		<div class="wc-payment-form">
+			<div id="payload-add-payment-method"></div>
+			<script>if(window.plMountPaymentMethodForm) window.plMountPaymentMethodForm()</script>
+		</div>
 		<?php
 	}
 
@@ -237,6 +243,12 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 			$post_payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
 			$post_token             = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
+
+			// Classic checkout sends the selected saved token via WC's standard radio field.
+			$wc_token_field = isset( $_POST[ 'wc-' . $this->id . '-payment-token' ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'wc-' . $this->id . '-payment-token' ] ) ) : '';
+			if ( '' === $post_token && '' !== $wc_token_field && 'new' !== $wc_token_field ) {
+				$post_token = $wc_token_field;
+			}
 
 			// Handle subscription payment method updates
 			if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order_id ) ) {

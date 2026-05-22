@@ -175,11 +175,24 @@ const AddPaymentMethod = () => {
 		const form = getForm();
 		const submitBtn = document.getElementById( 'place_order' );
 
+		const isUsingSavedToken = () => {
+			const selected = document.querySelector(
+				'input[name="wc-payload-payment-token"]:checked'
+			);
+			return !! selected && selected.value !== 'new';
+		};
+
 		const preventDefault = ( evt ) => {
+			if ( isUsingSavedToken() ) {
+				return;
+			}
 			evt.preventDefault();
 		};
 
 		const submitPayloadForm = async ( evt ) => {
+			if ( isUsingSavedToken() ) {
+				return;
+			}
 			evt.preventDefault();
 
 			try {
