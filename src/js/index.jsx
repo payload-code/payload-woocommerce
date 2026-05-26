@@ -155,10 +155,10 @@ const AddPaymentMethod = () => {
 	const addPaymentPaymentFormRef = useRef( null );
 
 	const getForm = () => {
-		return (
+		const el =
 			document.getElementById( 'order_review' ) ??
-			document.getElementById( 'add_payment_method' )
-		);
+			document.getElementById( 'add_payment_method' );
+		return el?.closest( 'form' ) ?? el;
 	};
 
 	useEffect( () => {
