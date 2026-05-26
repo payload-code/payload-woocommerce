@@ -5,7 +5,7 @@ Tags: credit card, payment request, payments
 Requires at least: 6.5
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.4.2
+Stable tag: 1.4.3
 License: MIT
 License URI: https://mit-license.org/
 
@@ -35,6 +35,11 @@ A WooCommerce Payment Gateway Plugin powered by Payload.com and designed to stre
 https://support.payload.com
 
 == Changelog ==
+
+= v1.4.3 =
+
+* Saved payment methods on classic checkout
+* Fixed classic checkout submission when a non-Payload gateway is selected
 
 = v1.4.2 =
 
