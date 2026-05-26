@@ -174,6 +174,9 @@ const AddPaymentMethod = () => {
 
 		const form = getForm();
 		const submitBtn = document.getElementById( 'place_order' );
+		if ( ! form || ! submitBtn ) {
+			return;
+		}
 
 		const isUsingSavedToken = () => {
 			const selected = form.querySelector(
