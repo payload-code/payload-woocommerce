@@ -181,6 +181,158 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 	}
 
 	/**
+	 * Test: Classic checkout sends the saved token via WC's wc-{id}-payment-token field.
+	 */
+	public function test_checkout_flow_with_wc_payment_token_field() {
+		$order_id          = 124;
+		$amount            = 50.00;
+		$user_id           = 1;
+		$token_id          = 789;
+		$payment_method_id = 'pm_saved789';
+		$card_brand        = 'visa';
+		$last4             = '4242';
+
+		CurlMocker::mockTransactionCreate(
+			$amount,
+			$payment_method_id,
+			null,
+			array(
+				'description'       => ' Order Item(s): ',
+				'amount'            => $amount,
+				'type'              => 'payment',
+				'payment_method_id' => $payment_method_id,
+				'order_number'      => strval( $order_id ),
+			)
+		);
+
+		$_POST = array( 'wc-payload-payment-token' => $token_id );
+
+		$order = $this->create_mock_order( $order_id, $amount, $user_id );
+
+		$token = Mockery::mock( 'WC_Payment_Token_CC' );
+		$token->shouldReceive( 'get_id' )->andReturn( $token_id );
+		$token->shouldReceive( 'get_user_id' )->andReturn( $user_id );
+		$token->shouldReceive( 'get_token' )->andReturn( $payment_method_id );
+		$token->shouldReceive( 'get_card_type' )->andReturn( $card_brand );
+		$token->shouldReceive( 'get_last4' )->andReturn( $last4 );
+
+		\Patchwork\redefine(
+			'WC_Payment_Tokens::get',
+			function ( $id ) use ( $token, $token_id ) {
+				if ( $id === strval( $token_id ) ) {
+					return $token;
+				}
+				return null;
+			}
+		);
+
+		Monkey\Functions\expect( 'setup_payload_api' )->once()->andReturnUsing(
+			function () {
+				\Payload\API::$api_key = 'test_key';
+				\Payload\API::$api_url = 'https://api.payload.com';
+			}
+		);
+		Monkey\Functions\expect( 'wcs_is_subscription' )->with( $order_id )->andReturn( false );
+		Monkey\Functions\expect( 'wc_get_order' )->with( $order_id )->andReturn( $order );
+
+		$logger_mock = Mockery::mock();
+		$logger_mock->shouldNotReceive( 'error' );
+		$logger_mock->shouldReceive( 'info' )->andReturn( true );
+		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
+
+		$subscription_order_mock = Mockery::mock( 'alias:WC_Subscriptions_Order' );
+		$subscription_order_mock->shouldReceive( 'order_contains_subscription' )
+			->with( $order_id )
+			->andReturn( false );
+
+		$result = $this->gateway->process_payment( $order_id );
+
+		$this->assertEquals( 'success', $result['result'] );
+	}
+
+	/**
+	 * Test: A 'new' value in WC's payment-token field is not treated as a saved
+	 * token. The customer chose to enter a new card, so the flow must use the
+	 * posted payment_method_id rather than looking up a token named 'new'.
+	 */
+	public function test_checkout_flow_with_new_card_ignores_wc_payment_token_field() {
+		$order_id          = 125;
+		$amount            = 100.00;
+		$user_id           = 1;
+		$customer_id       = 'cust_123';
+		$payment_method_id = 'pm_new125';
+		$card_brand        = 'visa';
+		$last4             = '1111';
+		$expiry            = '12/2025';
+
+		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
+		CurlMocker::mockTransactionCreate(
+			$amount,
+			$payment_method_id,
+			null,
+			array(
+				'description'       => ' Order Item(s): ',
+				'amount'            => $amount,
+				'type'              => 'payment',
+				'payment_method_id' => $payment_method_id,
+				'order_number'      => strval( $order_id ),
+			)
+		);
+		CurlMocker::mockUpdate(
+			'payment_methods',
+			$payment_method_id,
+			array(),
+			array( 'attrs' => array( '_wp_token_id' => 1 ) )
+		);
+
+		// Customer selected "use a new card", so WC posts the sentinel 'new'
+		// alongside the freshly created payment_method_id.
+		$_POST = array(
+			'payment_method_id'        => $payment_method_id,
+			'wc-payload-payment-token' => 'new',
+		);
+
+		$order = $this->create_mock_order( $order_id, $amount, $user_id );
+
+		// The guard must prevent 'new' from being promoted to a saved token, so
+		// the saved-token lookup must never run.
+		\Patchwork\redefine(
+			'WC_Payment_Tokens::get',
+			function () {
+				throw new \Exception( 'WC_Payment_Tokens::get should not be called when a new card is used.' );
+			}
+		);
+
+		Monkey\Functions\expect( 'get_user_meta' )
+			->with( $user_id, PAYLOAD_CUSTOMER_ID_META_KEY, true )
+			->andReturn( $customer_id );
+
+		Monkey\Functions\expect( 'setup_payload_api' )->once()->andReturnUsing(
+			function () {
+				\Payload\API::$api_key = 'test_key';
+				\Payload\API::$api_url = 'https://api.payload.com';
+			}
+		);
+		Monkey\Functions\expect( 'wcs_is_subscription' )->with( $order_id )->andReturn( false );
+		Monkey\Functions\expect( 'wc_get_order' )->with( $order_id )->andReturn( $order );
+
+		$logger_mock = Mockery::mock();
+		$logger_mock->shouldNotReceive( 'error' );
+		$logger_mock->shouldReceive( 'info' )->andReturn( true );
+		Monkey\Functions\expect( 'wc_get_logger' )->andReturn( $logger_mock );
+
+		$subscription_order_mock = Mockery::mock( 'alias:WC_Subscriptions_Order' );
+		$subscription_order_mock->shouldReceive( 'order_contains_subscription' )
+			->with( $order_id )
+			->andReturn( false );
+
+		$result = $this->gateway->process_payment( $order_id );
+
+		$this->assertEquals( 'success', $result['result'] );
+		$this->assertArrayHasKey( 'redirect', $result );
+	}
+
+	/**
 	 * Test: Payment method update for subscription
 	 */
 	public function test_subscription_payment_method_update_flow() {

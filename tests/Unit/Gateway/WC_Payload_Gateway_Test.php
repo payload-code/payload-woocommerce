@@ -59,11 +59,11 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 
 		Monkey\Functions\expect( 'wp_enqueue_style' )
 			->once()
-			->with( 'payload-blocks-css', Mockery::type( 'string' ), array(), '' );
+			->with( 'payload-blocks-css', Mockery::type( 'string' ), array(), PAYLOAD_WC_VERSION );
 
 		Monkey\Functions\expect( 'wp_enqueue_script' )
 			->once()
-			->with( 'payload-blocks-integration', Mockery::type( 'string' ), Mockery::type( 'array' ), '', true );
+			->with( 'payload-blocks-integration', Mockery::type( 'string' ), Mockery::type( 'array' ), PAYLOAD_WC_VERSION, true );
 
 		Monkey\Functions\expect( 'function_exists' )
 			->with( 'wp_set_script_translations' )

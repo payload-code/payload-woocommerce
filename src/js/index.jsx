@@ -155,10 +155,10 @@ const AddPaymentMethod = () => {
 	const addPaymentPaymentFormRef = useRef( null );
 
 	const getForm = () => {
-		return (
+		const el =
 			document.getElementById( 'order_review' ) ??
-			document.getElementById( 'add_payment_method' )
-		);
+			document.getElementById( 'add_payment_method' );
+		return el?.closest( 'form' ) ?? el;
 	};
 
 	useEffect( () => {
@@ -174,12 +174,39 @@ const AddPaymentMethod = () => {
 
 		const form = getForm();
 		const submitBtn = document.getElementById( 'place_order' );
+		if ( ! form || ! submitBtn ) {
+			return;
+		}
+
+		const isUsingSavedToken = () => {
+			const selected = form.querySelector(
+				'input[name="wc-payload-payment-token"]:checked'
+			);
+			return !! selected && selected.value !== 'new';
+		};
+
+		// Classic checkout renders every gateway's fields on the shared
+		// form, so these listeners must stay inert unless Payload is the
+		// selected gateway. When no gateway radio is present (e.g. the
+		// add-payment-method page with a single method) Payload is implied.
+		const isPayloadSelected = () => {
+			const selected = form.querySelector(
+				'input[name="payment_method"]:checked'
+			);
+			return ! selected || selected.value === PAYMENT_METHOD_NAME;
+		};
 
 		const preventDefault = ( evt ) => {
+			if ( ! isPayloadSelected() || isUsingSavedToken() ) {
+				return;
+			}
 			evt.preventDefault();
 		};
 
 		const submitPayloadForm = async ( evt ) => {
+			if ( ! isPayloadSelected() || isUsingSavedToken() ) {
+				return;
+			}
 			evt.preventDefault();
 
 			try {

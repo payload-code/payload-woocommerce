@@ -3,7 +3,7 @@
  * Plugin Name: Payload WooCommerce
  * Plugin URI: https://github.com/payload-code/payload-woocommerce
  * Description: Accept WooCommerce payments through Payload.com.
- * Version: 1.4.2
+ * Version: 1.4.3
  * Author: Payload
  * Author URI: https://payload.com
  * Requires Plugins: woocommerce
@@ -11,6 +11,8 @@
  * License URI: https://mit-license.org/
  * Text Domain: payload
  * Domain Path: /languages
+ *
+ * @package Payload_WooCommerce
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -26,6 +28,13 @@ use Payload\API as pl;
 define( 'PAYLOAD_CUSTOMER_ID_META_KEY', 'payload_customer_id' );
 
 /**
+ * Plugin version used when enqueuing static assets.
+ *
+ * @since 1.5.0
+ */
+define( 'PAYLOAD_WC_VERSION', '1.4.3' );
+
+/**
  * Initialize WooCommerce Payload integration.
  *
  * Loads the Payload payment gateway class if WooCommerce is available.
@@ -34,13 +43,13 @@ define( 'PAYLOAD_CUSTOMER_ID_META_KEY', 'payload_customer_id' );
  */
 function woocommerce_payload() {
 	if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
-		return; // if the WC payment gateway class is not available
+		return;
 	}
 
-	// Load core gateway class
+	// Load core gateway class.
 	include_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-gateway.php';
 
-	// Load function files
+	// Load function files.
 	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-api-functions.php';
 	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-customer-functions.php';
 	include_once plugin_dir_path( __FILE__ ) . 'includes/payload-order-functions.php';
@@ -67,9 +76,9 @@ add_filter( 'woocommerce_payment_gateways', 'add_payload_gateway' );
  * @since 1.0.0
  */
 function declare_cart_checkout_blocks_compatibility() {
-	// Check if the required class exists
+	// Check if the required class exists.
 	if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
-		// Declare compatibility for 'cart_checkout_blocks'
+		// Declare compatibility for cart_checkout_blocks.
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
 	}
 }
@@ -81,15 +90,15 @@ add_action( 'before_woocommerce_init', 'declare_cart_checkout_blocks_compatibili
  * @since 1.0.0
  */
 function payload_register_order_approval_payment_method_type() {
-	// Check if the required class exists
+	// Check if the required class exists.
 	if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
 		return;
 	}
 
-	// Include Blocks Checkout class
+	// Include Blocks Checkout class.
 	include_once plugin_dir_path( __FILE__ ) . 'includes/class-wc-payload-blocks.php';
 
-	// Hook the registration function to the 'woocommerce_blocks_payment_method_type_registration' action
+	// Hook the registration function to the woocommerce_blocks_payment_method_type_registration action.
 	add_action(
 		'woocommerce_blocks_payment_method_type_registration',
 		'payload_register_blocks_payment_method'
@@ -107,6 +116,6 @@ add_action( 'woocommerce_blocks_loaded', 'payload_register_order_approval_paymen
  * @param Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry Payment method registry instance.
  */
 function payload_register_blocks_payment_method( $payment_method_registry ) {
-	// Register an instance of WC_Payload_Blocks
+	// Register an instance of WC_Payload_Blocks.
 	$payment_method_registry->register( new WC_Payload_Blocks() );
 }

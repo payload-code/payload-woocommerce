@@ -1,5 +1,10 @@
 == Changelog ==
 
+= v1.4.3 =
+
+* Saved payment methods on classic checkout
+* Fixed classic checkout submission when a non-Payload gateway is selected
+
 = v1.4.2 =
 
 * Tokenize payment method for non-guest checkouts
