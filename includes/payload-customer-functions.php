@@ -65,7 +65,7 @@ function get_payload_customer_id( $user_id = null ) {
 		return;
 	}
 
-	// Try and lookup customer by email
+	// Try and lookup customer by email.
 	try {
 		$customer = Payload\Customer::filter_by(
 			array( 'email' => $user->user_email )
@@ -82,10 +82,10 @@ function get_payload_customer_id( $user_id = null ) {
 			'Failed to retrieve Payload customer by email for user ID ' . $user->ID . ': ' . $e->getMessage(),
 			$context
 		);
-		// Continue to creation attempt
+		// Continue to creation attempt.
 	}
 
-	// Create customer if doesn't exist
+	// Create customer if doesn't exist.
 	try {
 		$customer_data = payload_build_customer_data( $user );
 		$customer      = Payload\Customer::create(
@@ -143,17 +143,19 @@ add_action( 'woocommerce_after_checkout_billing_form', 'payload_display_billing_
  * @param WC_Order $order Order object being created.
  * @param array    $data  Posted checkout data.
  */
-function payload_save_billing_company_to_order( $order, $data ) {
+function payload_save_billing_company_to_order( $order, $data ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- WC action signature.
 
+	// phpcs:disable WordPress.Security.NonceVerification.Missing -- Hook fires after WC has already validated checkout nonce.
 	if ( isset( $_POST['billing_company'] ) && ! empty( $_POST['billing_company'] ) ) {
 		$company = sanitize_text_field( wp_unslash( $_POST['billing_company'] ) );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
-		// Set on the order
+		// Set on the order.
 		$order->set_billing_company( $company );
 
 		$user_id = payload_get_order_user_id( $order );
 
-		// Also persist on the user, if logged in
+		// Also persist on the user, if logged in.
 		if ( $user_id ) {
 			update_user_meta( $user_id, 'billing_company', $company );
 		}
@@ -171,7 +173,7 @@ add_action( 'woocommerce_checkout_create_order', 'payload_save_billing_company_t
  * @param int     $user_id  User ID being updated.
  * @param WP_User $old_user Previous user data object.
  */
-function payload_sync_customer_on_profile_update( $user_id, $old_user ) {
+function payload_sync_customer_on_profile_update( $user_id, $old_user ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- WP action signature.
 	setup_payload_api();
 
 	$payload_customer_id = payload_get_customer_id_meta( $user_id );
@@ -189,7 +191,7 @@ function payload_sync_customer_on_profile_update( $user_id, $old_user ) {
 				'Failed to update Payload customer on profile update for user ID ' . $user_id . ': ' . $e->getMessage(),
 				array( 'source' => 'payload-woocommerce' )
 			);
-			// Fail silently - don't block profile updates
+			// Fail silently - don't block profile updates.
 		}
 	}
 }
@@ -254,7 +256,9 @@ add_action( 'woocommerce_checkout_order_processed', 'payload_ensure_customer_aft
 function payload_find_user_by_customer_id( $payload_customer_id ) {
 	$users = get_users(
 		array(
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Single-record lookup with number=1.
 			'meta_key'   => PAYLOAD_CUSTOMER_ID_META_KEY,
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Single-record lookup with number=1.
 			'meta_value' => $payload_customer_id,
 			'number'     => 1,
 			'fields'     => 'ID',
@@ -266,6 +270,13 @@ function payload_find_user_by_customer_id( $payload_customer_id ) {
 	return null;
 }
 
+/**
+ * Build the Payload customer data payload from a WordPress user.
+ *
+ * @since  1.4.0
+ * @param  WP_User $user WordPress user object.
+ * @return array Data array suitable for Payload\Customer::create() or update().
+ */
 function payload_build_customer_data( $user ) {
 	$company_name = get_user_meta( $user->ID, 'billing_company', true );
 	return array(

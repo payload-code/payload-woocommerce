@@ -1,4 +1,4 @@
-<?php
+<?php // phpcs:disable WordPress.Files.FileName.InvalidClassFileName -- File hosts the gateway class; the helper exception lives alongside it.
 /**
  * Payload Payment Gateway Class
  *
@@ -7,6 +7,8 @@
  * @package Payload_WooCommerce
  * @since   1.0.0
  */
+
+// phpcs:disable Generic.Files.OneObjectStructurePerFile.MultipleFound -- TransactionDeclined helper kept alongside its primary consumer.
 
 defined( 'ABSPATH' ) || exit;
 
@@ -17,14 +19,29 @@ defined( 'ABSPATH' ) || exit;
  */
 class TransactionDeclined extends Exception {
 
+	/**
+	 * Human-readable description of the decline, mirrored from the exception message.
+	 *
+	 * @var string
+	 */
 	public $error_description;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param string         $message  Exception message.
+	 * @param int            $code     Exception code.
+	 * @param Exception|null $previous Previous exception in the chain.
+	 */
 	public function __construct( $message = '', $code = 0, Exception $previous = null ) {
 		parent::__construct( $message, $code, $previous );
 		$this->error_description = $message;
 	}
 }
 
+/**
+ * Payload payment gateway integration with WooCommerce.
+ */
 class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 
@@ -172,7 +189,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			return;
 		}
 
-		wp_enqueue_style( 'payload-blocks-css', plugin_dir_url( __FILE__ ) . '../build/style-main.css', array(), '' );
+		$version = defined( 'PAYLOAD_WC_VERSION' ) ? PAYLOAD_WC_VERSION : null;
+
+		wp_enqueue_style( 'payload-blocks-css', plugin_dir_url( __FILE__ ) . '../build/style-main.css', array(), $version );
 
 		wp_enqueue_script(
 			'payload-blocks-integration',
@@ -184,7 +203,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				'wp-html-entities',
 				'wp-i18n',
 			),
-			'',
+			$version,
 			true
 		);
 
@@ -224,7 +243,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			setup_payload_api();
 
 			if ( payload_card_update_retry_suppressed( $order_id ) ) {
-				throw new Exception( __( 'Payment already processing for order', 'payload' ) );
+				throw new Exception( esc_html__( 'Payment already processing for order', 'payload' ) );
 			}
 
 			payload_card_update_retry_suppressed( $order_id, true );
@@ -236,11 +255,12 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			$order = wc_get_order( $order_id );
 
 			if ( ! $order ) {
-				throw new Exception( __( 'Invalid order', 'payload' ) );
+				throw new Exception( esc_html__( 'Invalid order', 'payload' ) );
 			}
 
 			$user_id_from_order = payload_get_order_user_id( $order );
 
+			// phpcs:disable WordPress.Security.NonceVerification.Missing -- WC has already validated the checkout nonce before invoking this gateway callback.
 			$post_payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
 			$post_token             = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
 
@@ -249,14 +269,15 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			if ( '' === $post_token && '' !== $wc_token_field && 'new' !== $wc_token_field ) {
 				$post_token = $wc_token_field;
 			}
+			// phpcs:enable WordPress.Security.NonceVerification.Missing
 
-			// Handle subscription payment method updates
+			// Handle subscription payment method updates.
 			if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order_id ) ) {
 				return $this->process_subscription_payment_method_update( $order, $post_payment_method_id, $user_id_from_order );
 			}
 
-			// Handle zero-amount orders (e.g., 100% discount coupons, free trials)
-			if ( $order->get_total() == 0 ) {
+			// Handle zero-amount orders (e.g., 100% discount coupons, free trials).
+			if ( 0.0 === (float) $order->get_total() ) {
 				$logger->info( 'Zero-amount order detected for Order ID: ' . $order_id . ', completing without payment processing', $context );
 				$order->payment_complete();
 				return array(
@@ -265,16 +286,18 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				);
 			}
 
-			// Process payment using token or payment method
+			// Process payment using token or payment method.
 			if ( ! empty( $post_token ) || ! empty( $post_payment_method_id ) ) {
 				$payment = $this->process_token_payment( $order, $post_token, $post_payment_method_id, $user_id_from_order );
 			} else {
+				// phpcs:disable WordPress.Security.NonceVerification.Missing -- WC has already validated the checkout nonce before invoking this gateway callback.
 				$transaction_id = isset( $_POST['transactionid'] ) ? sanitize_text_field( wp_unslash( $_POST['transactionid'] ) ) : '';
+				// phpcs:enable WordPress.Security.NonceVerification.Missing
 				if ( empty( $transaction_id ) ) {
-					throw new Exception( __( 'Missing payment details', 'payload' ) );
+					throw new Exception( esc_html__( 'Missing payment details', 'payload' ) );
 				}
 
-				// Confirm payment processed on client side
+				// Confirm payment processed on client side.
 				$payment = $this->process_client_side_payment( $transaction_id, $order, $user_id_from_order );
 			}
 
@@ -300,7 +323,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	public function add_payment_method() {
 		setup_payload_api();
 
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- WC's add-payment-method form validates its own nonce before invoking this callback.
 		$payment_method_id = isset( $_POST['payment_method_id'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_method_id'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		if ( empty( $payment_method_id ) ) {
 			throw new Exception( 'Missing payment method details' );
 		}
@@ -327,7 +352,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 
 		$status = $renewal_order->get_status();
 
-		if ( $status !== 'pending' ) {
+		if ( 'pending' !== $status ) {
 			return;
 		}
 
@@ -374,7 +399,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				if ( $admin_email ) {
 					wp_mail(
 						$admin_email,
+						/* translators: %s: order number. */
 						sprintf( __( 'Subscription Payment Failed - Order #%s', 'payload' ), $renewal_order->get_id() ),
+						/* translators: %s: order number. */
 						sprintf( __( "Automatic subscription payment could not be processed for order #%s.\n\nReason: No payment method on file.\n\nPlease contact the customer to update their payment information.", 'payload' ), $renewal_order->get_id() )
 					);
 				}
@@ -417,7 +444,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	 */
 	protected function process_subscription_payment_method_update( $order, $payment_method_id, $user_id_from_order ) {
 		if ( empty( $payment_method_id ) ) {
-			throw new Exception( __( 'Missing payment method details', 'payload' ) );
+			throw new Exception( esc_html__( 'Missing payment method details', 'payload' ) );
 		}
 
 		$token = $this->create_token_from_payment_method_id( $payment_method_id, $user_id_from_order );
@@ -425,9 +452,11 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$parent_order = wc_get_order( $order->get_parent_id() );
 		$this->update_order_payment_method_token( $parent_order, $token );
 
-		// Update all subscriptions if requested
+		// Update all subscriptions if requested.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- WC has already validated the checkout/change-payment nonce before invoking this gateway callback.
 		$update_all = isset( $_POST['update_all_subscriptions_payment_method'] ) ? sanitize_text_field( wp_unslash( $_POST['update_all_subscriptions_payment_method'] ) ) : '';
-		if ( $update_all === '1' ) {
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+		if ( '1' === $update_all ) {
 			$subscriptions = wcs_get_users_subscriptions( $user_id_from_order );
 			$errors        = array();
 
@@ -444,9 +473,9 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				}
 			}
 
-			// If any updates failed, throw an exception with all errors
+			// If any updates failed, throw an exception with all errors.
 			if ( ! empty( $errors ) ) {
-				throw new Exception( implode( '; ', $errors ) );
+				throw new Exception( esc_html( implode( '; ', $errors ) ) );
 			}
 		}
 
@@ -486,6 +515,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	 * Process payment that was completed on the client side.
 	 *
 	 * @since  1.0.0
+	 * @param  string   $transaction_id     The Payload transaction ID returned by the client.
 	 * @param  WC_Order $order              The order object.
 	 * @param  int      $user_id_from_order The user ID from the order.
 	 * @return object Payment transaction object.
@@ -501,22 +531,22 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				'Failed to retrieve transaction: ' . $e->getMessage(),
 				array( 'source' => 'payload-gateway' )
 			);
-			throw new Exception( __( 'Unable to verify payment. Please contact support.', 'payload' ) );
+			throw new Exception( esc_html__( 'Unable to verify payment. Please contact support.', 'payload' ) );
 		}
 
-		// Validate payment amount
+		// Validate payment amount.
 		$amt         = (float) $order->get_total();
 		$payment_amt = (float) $payment->amount;
 		if ( abs( $amt - $payment_amt ) > 0.01 ) {
-			throw new Exception( __( 'Mismatched Amount', 'payload' ) );
+			throw new Exception( esc_html__( 'Mismatched Amount', 'payload' ) );
 		}
 
-		// Associate customer with payment if not already set
+		// Associate customer with payment if not already set.
 		if ( ! $payment->customer_id ) {
 			$this->associate_customer_with_payment( $payment, $user_id_from_order );
 		}
 
-		// Create and set token if subscription, or if the payment method should be kept active for a known user
+		// Create and set token if subscription, or if the payment method should be kept active for a known user.
 		$has_subscription = class_exists( 'WC_Subscriptions_Order' ) && WC_Subscriptions_Order::order_contains_subscription( $order->get_id() );
 		$should_tokenize  = $has_subscription || ( ! empty( $payment->payment_method['keep_active'] ) && $user_id_from_order );
 
@@ -558,11 +588,11 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			);
 			$this->handle_order_payment( $order, $payment );
 		} catch ( Payload\Exceptions\BadRequest $e ) {
-			throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage() );
+			throw new TransactionDeclined( esc_html( 'Transaction creation failed: ' . $e->getMessage() ) );
 		} catch ( Payload\Exceptions\InvalidAttributes $e ) {
-			throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage() );
+			throw new TransactionDeclined( esc_html( 'Transaction creation failed: ' . $e->getMessage() ) );
 		} catch ( Payload\Exceptions\TransactionDeclined $e ) {
-			throw new TransactionDeclined( 'Transaction creation failed: ' . $e->getMessage() );
+			throw new TransactionDeclined( esc_html( 'Transaction creation failed: ' . $e->getMessage() ) );
 		}
 		return $payment;
 	}
@@ -578,8 +608,8 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$order->set_transaction_id( $payment->ref_number );
 		$order_id = $order->get_id();
 
-		// Non virtual goods will be processed manaully after admin review
-		if ( $payment->status === 'authorized' && payload_order_is_virtual( $order_id ) ) {
+		// Non virtual goods will be processed manaully after admin review.
+		if ( 'authorized' === $payment->status && payload_order_is_virtual( $order_id ) ) {
 			try {
 				$payment->update(
 					array(
@@ -594,12 +624,12 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 					'Failed to update payment details for order ' . $order_id . ': ' . $e->getMessage(),
 					array( 'source' => 'payload-gateway' )
 				);
-				// Continue processing - this is a non-critical update
+				// Continue processing - this is a non-critical update.
 			}
 		}
 
-		// Set completed automatically if transaction is fully processed
-		if ( $payment->status === 'processed' ) {
+		// Set completed automatically if transaction is fully processed.
+		if ( 'processed' === $payment->status ) {
 			$order->payment_complete();
 
 		}
@@ -628,7 +658,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 					'Failed to associate customer with payment: ' . $e->getMessage(),
 					array( 'source' => 'payload-gateway' )
 				);
-				// Don't throw - this is a non-critical operation
+				// Don't throw - this is a non-critical operation.
 			}
 		}
 	}
@@ -652,7 +682,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				'Failed to retrieve payment method for subscription update: ' . $e->getMessage(),
 				array( 'source' => 'payload-gateway' )
 			);
-			throw new Exception( __( 'Unable to retrieve payment method. Please try again.', 'payload' ) );
+			throw new Exception( esc_html__( 'Unable to retrieve payment method. Please try again.', 'payload' ) );
 		}
 
 		return $this->create_token( $payment_method->data(), $user_id );
@@ -676,7 +706,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$token->set_expiry_year( substr( $payment_method['card']['expiry'], -4 ) );
 
 		if ( $user_id ) {
-			// We create this flag just incase Admin is changing payment method for a user
+			// We create this flag just incase Admin is changing payment method for a user.
 			$token->set_user_id( $user_id );
 		} else {
 			$token->set_user_id( get_current_user_id() );
@@ -698,7 +728,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 				'Failed to update payment method attributes: ' . $e->getMessage(),
 				array( 'source' => 'payload-gateway' )
 			);
-			// Continue - this is a non-critical metadata update
+			// Continue - this is a non-critical metadata update.
 		}
 
 		return $token;
@@ -712,7 +742,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	 * @return WC_Payment_Token_CC|false Existing token if found, false otherwise.
 	 */
 	public function check_if_card_exist( $token ) {
-		// Check if card exist
+		// Check if card exist.
 		$chk_tokens = WC_Payment_Tokens::get_customer_tokens( $token->get_user_id(), $this->id );
 		foreach ( $chk_tokens as $chk_token ) {
 			if ( $chk_token->get_last4() === $token->get_last4()
@@ -753,6 +783,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 			&& method_exists( $token, 'get_last4' ) && $token->get_last4()
 		) {
 			$method_title = sprintf(
+				/* translators: 1: card brand, 2: last four digits. */
 				__( '%1$s x-%2$s', 'payload' ),
 				strtoupper( $token->get_card_type() ),
 				$token->get_last4()
@@ -793,6 +824,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		}
 
 		$note = sprintf(
+			/* translators: %s: last four digits of the new card. */
 			__( 'Payment method updated to card ending in %s after a previous card issue. Order moved to pending for retry.', 'payload' ),
 			$token->get_last4()
 		);
@@ -803,11 +835,13 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$order_number = method_exists( $order, 'get_order_number' ) ? $order->get_order_number() : $order->get_id();
 
 		$subject = sprintf(
+			/* translators: %s: order number. */
 			__( 'Order #%s payment retry notice', 'payload' ),
 			$order_number
 		);
 
 		$message_body = sprintf(
+			/* translators: 1: order number, 2: last four digits of the new card, 3: order note text. */
 			__( 'Order #%1$s:  %3$s', 'payload' ),
 			$order_number,
 			$token->get_last4(),

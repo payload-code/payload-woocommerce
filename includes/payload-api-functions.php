@@ -22,12 +22,10 @@ function setup_payload_api() {
 
 	if ( ! empty( $settings['api_key'] ) ) {
 		Payload\API::$api_key = $settings['api_key'];
-	} else {
-		// Log error if API key is missing
-		if ( function_exists( 'wc_get_logger' ) ) {
-			$logger = wc_get_logger();
-			$logger->error( 'Payload API key is not configured', array( 'source' => 'payload-woocommerce' ) );
-		}
+	} elseif ( function_exists( 'wc_get_logger' ) ) {
+		// Log error if API key is missing.
+		$logger = wc_get_logger();
+		$logger->error( 'Payload API key is not configured', array( 'source' => 'payload-woocommerce' ) );
 	}
 
 	if ( getenv( 'PAYLOAD_API_URL' ) ) {
@@ -44,13 +42,14 @@ function setup_payload_api() {
  * @param  array $data Request data from REST API.
  * @return array Array containing client_token ID.
  */
-function get_intent( $data ) {
+function get_intent( $data ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- REST callback signature.
 	setup_payload_api();
 
 	$payload_customer_id = get_payload_customer_id();
 
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only public REST endpoint.
 	$request_type = isset( $_GET['type'] ) ? sanitize_text_field( wp_unslash( $_GET['type'] ) ) : '';
-	if ( $request_type === 'payment_method' ) {
+	if ( 'payment_method' === $request_type ) {
 		$intent = array(
 			'payment_method_form' => array(
 				'payment_method' => array(
@@ -69,11 +68,11 @@ function get_intent( $data ) {
 	}
 
 	try {
-		$clientToken = Payload\ClientToken::create(
+		$client_token = Payload\ClientToken::create(
 			array( 'intent' => $intent ),
 		);
 
-		return array( 'client_token' => $clientToken->id );
+		return array( 'client_token' => $client_token->id );
 	} catch ( Payload\Exceptions\Unauthorized $e ) {
 		$logger = wc_get_logger();
 		$logger->error(

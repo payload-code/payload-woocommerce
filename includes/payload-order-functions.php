@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  * @param  string          $context      Display context.
  * @return string Payment method title from parent order or default message.
  */
-function payload_subscription_payment_method_to_display( $label, $subscription, $context ) {
+function payload_subscription_payment_method_to_display( $label, $subscription, $context ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- Filter signature.
 
 	$parent_order = wc_get_order( $subscription->get_parent_id() );
 	if ( $parent_order ) {
@@ -122,16 +122,16 @@ function payload_get_order_product_names( $order_id ) {
  */
 function payload_get_order_user_id( $order ) {
 	if ( is_callable( array( $order, 'get_customer_id' ) ) ) {
-		// Newer WooCommerce (3+)
+		// Newer WooCommerce (3+).
 		return (int) $order->get_customer_id();
 	}
 
 	if ( is_callable( array( $order, 'get_user_id' ) ) ) {
-		// Older WooCommerce
+		// Older WooCommerce.
 		return (int) $order->get_user_id();
 	}
 
-	// Fallback for really old style or weird mocks
+	// Fallback for really old style or weird mocks.
 	if ( isset( $order->customer_user ) ) {
 		return (int) $order->customer_user;
 	}
