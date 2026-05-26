@@ -32,7 +32,7 @@ define( 'PAYLOAD_CUSTOMER_ID_META_KEY', 'payload_customer_id' );
  *
  * @since 1.5.0
  */
-define( 'PAYLOAD_WC_VERSION', '1.4.2' );
+define( 'PAYLOAD_WC_VERSION', '1.4.3' );
 
 /**
  * Initialize WooCommerce Payload integration.
