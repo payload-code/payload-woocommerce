@@ -189,7 +189,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 			'card' => array(
 				'card_brand'  => 'visa',
 				'card_number' => '4111111111111111',
-				'expiry'      => '12/2025',
+				'expiry'      => '2031-12-31',
 			),
 		);
 		$payment_mock->shouldReceive( 'update' )->andReturn( true );
@@ -273,7 +273,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 				'card' => array(
 					'card_brand'  => 'visa',
 					'card_number' => '4111111111111111',
-					'expiry'      => '12/' . date( 'Y', strtotime( '+1 year' ) ),
+					'expiry'      => '2031-12-31',
 				),
 			)
 		);
@@ -427,7 +427,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 			'card'        => array(
 				'card_brand'  => 'visa',
 				'card_number' => '4111111111111111',
-				'expiry'      => '12/2025',
+				'expiry'      => '2031-12-31',
 			),
 		);
 
@@ -471,7 +471,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 			'card'        => array(
 				'card_brand'  => 'visa',
 				'card_number' => '4111111111111111',
-				'expiry'      => '12/2025',
+				'expiry'      => '2031-12-31',
 			),
 		);
 
@@ -510,7 +510,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 			'card'        => array(
 				'card_brand'  => 'visa',
 				'card_number' => '4111111111111111',
-				'expiry'      => '12/2025',
+				'expiry'      => '2031-12-31',
 			),
 		);
 
