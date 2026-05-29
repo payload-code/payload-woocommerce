@@ -702,8 +702,10 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$token->set_gateway_id( $this->id );
 		$token->set_card_type( $payment_method['card']['card_brand'] );
 		$token->set_last4( substr( $payment_method['card']['card_number'], -4 ) );
-		$token->set_expiry_month( substr( $payment_method['card']['expiry'], 0, 2 ) );
-		$token->set_expiry_year( substr( $payment_method['card']['expiry'], -4 ) );
+		// Payload returns the card expiry in YYYY-MM-DD format.
+		$expiry_parts = explode( '-', $payment_method['card']['expiry'] );
+		$token->set_expiry_year( $expiry_parts[0] );
+		$token->set_expiry_month( $expiry_parts[1] );
 
 		if ( $user_id ) {
 			// We create this flag just incase Admin is changing payment method for a user.

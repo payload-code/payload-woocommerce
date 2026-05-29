@@ -228,7 +228,7 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 			'card' => array(
 				'card_brand'  => 'visa',
 				'card_number' => '4111111111111111',
-				'expiry'      => '12/' . date( 'Y', strtotime( '+1 year' ) ),
+				'expiry'      => '2031-12-31',
 			),
 		);
 
@@ -241,6 +241,26 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 
 		$this->assertInstanceOf( WC_Payment_Token_CC::class, $token );
 		$this->assertEquals( 'pm_test123', $token->get_token() );
+	}
+
+	public function test_create_token_parses_expiry_from_yyyy_mm_dd() {
+		$payment_method_data = array(
+			'id'   => 'pm_test123',
+			'card' => array(
+				'card_brand'  => 'visa',
+				'card_number' => '4111111111111111',
+				// Payload returns the card expiry in YYYY-MM-DD format.
+				'expiry'      => '2031-12-31',
+			),
+		);
+
+		Monkey\Functions\expect( 'get_current_user_id' )
+		->andReturn( 1 );
+
+		$token = $this->gateway->create_token( $payment_method_data );
+
+		$this->assertEquals( '12', $token->get_expiry_month() );
+		$this->assertEquals( '2031', $token->get_expiry_year() );
 	}
 
 	public function test_add_payment_method_success() {
