@@ -263,6 +263,33 @@ class Test_WC_Payload_Gateway extends UnitTestCase {
 		$this->assertEquals( '2031', $token->get_expiry_year() );
 	}
 
+	/**
+	 * @dataProvider malformed_expiry_provider
+	 */
+	public function test_create_token_rejects_malformed_expiry( $expiry ) {
+		$payment_method_data = array(
+			'id'   => 'pm_test123',
+			'card' => array(
+				'card_brand'  => 'visa',
+				'card_number' => '4111111111111111',
+				'expiry'      => $expiry,
+			),
+		);
+
+		$this->expectException( Exception::class );
+
+		$this->gateway->create_token( $payment_method_data );
+	}
+
+	public function malformed_expiry_provider() {
+		return array(
+			'legacy MM/YYYY' => array( '12/2025' ), // the exact old format — guards against regressing the original bug.
+			'empty string'   => array( '' ),
+			'null'           => array( null ),
+			'no separators'  => array( '20311231' ),
+		);
+	}
+
 	public function test_add_payment_method_success() {
 		$_POST = array( 'payment_method_id' => 'pm_123' );
 

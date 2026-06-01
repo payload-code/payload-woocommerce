@@ -695,6 +695,7 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 	 * @param  array    $payment_method Payment method data array.
 	 * @param  int|null $user_id        WordPress user ID (optional).
 	 * @return WC_Payment_Token_CC The created or existing payment token.
+	 * @throws Exception When the card expiry is not in the expected YYYY-MM-DD format.
 	 */
 	public function create_token( $payment_method, $user_id = null ) {
 		$token = new WC_Payment_Token_CC();
@@ -702,8 +703,14 @@ class WC_Payload_Gateway extends WC_Payment_Gateway {
 		$token->set_gateway_id( $this->id );
 		$token->set_card_type( $payment_method['card']['card_brand'] );
 		$token->set_last4( substr( $payment_method['card']['card_number'], -4 ) );
-		// Payload returns the card expiry in YYYY-MM-DD format.
-		$expiry_parts = explode( '-', $payment_method['card']['expiry'] );
+		// Payload returns the card expiry in YYYY-MM-DD format. Guard against any
+		// other format so a malformed value fails loudly instead of silently
+		// saving a token with an incorrect expiry.
+		$expiry = isset( $payment_method['card']['expiry'] ) ? $payment_method['card']['expiry'] : '';
+		if ( ! is_string( $expiry ) || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $expiry ) ) {
+			throw new Exception( esc_html__( 'Unexpected card expiry format received from Payload.', 'payload' ) );
+		}
+		$expiry_parts = explode( '-', $expiry );
 		$token->set_expiry_year( $expiry_parts[0] );
 		$token->set_expiry_month( $expiry_parts[1] );
 
