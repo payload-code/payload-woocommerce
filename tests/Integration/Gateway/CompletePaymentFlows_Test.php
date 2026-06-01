@@ -43,7 +43,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$payment_method_id = 'pm_new123';
 		$card_brand        = 'visa';
 		$last4             = '1111';
-		$expiry            = '12/2025';
+		$expiry            = '2025-12-01';
 
 		// Mock HTTP responses for Payload API calls
 		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
@@ -263,7 +263,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$payment_method_id = 'pm_new125';
 		$card_brand        = 'visa';
 		$last4             = '1111';
-		$expiry            = '12/2025';
+		$expiry            = '2025-12-01';
 
 		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
 		CurlMocker::mockTransactionCreate(
@@ -344,7 +344,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$payment_method_id = 'pm_updated123';
 		$card_brand        = 'amex';
 		$last4             = '8888';
-		$expiry            = '06/2026';
+		$expiry            = '2026-06-01';
 
 		// Mock HTTP response for PaymentMethod::get()
 		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
@@ -413,7 +413,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$card_brand        = 'visa';
 		$last4             = '1111';
 		$card_number       = '4111111111111111';
-		$expiry            = '12/2025';
+		$expiry            = '2025-12-01';
 		$description       = 'Visa ending in 1111';
 
 		// Mock HTTP responses for Payload API calls
@@ -515,7 +515,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$payment_method_id = 'pm_new123';
 		$card_brand        = 'visa';
 		$last4             = '1111';
-		$expiry            = '12/2025';
+		$expiry            = '2025-12-01';
 
 		// Mock HTTP responses for Payload API calls
 		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );
@@ -584,7 +584,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$token_id          = 111;
 		$card_brand        = 'mastercard';
 		$last4             = '5555';
-		$expiry            = '12/2025';
+		$expiry            = '2025-12-01';
 		$subscription_id   = 'sub_123';
 
 		$order = $this->create_mock_order( $order_id, $amount, $user_id );
@@ -679,7 +679,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$token_id          = 111;
 		$card_brand        = 'mastercard';
 		$last4             = '5555';
-		$expiry            = '12/2025';
+		$expiry            = '2025-12-01';
 		$subscription_id   = 'sub_123';
 
 		$order = $this->create_mock_order( $order_id, $amount, $user_id );
@@ -879,7 +879,7 @@ class Test_Integration_Payment_Flows extends IntegrationTestCase {
 		$payment_method_id = 'pm_123';
 		$card_brand        = 'visa';
 		$last4             = '1111';
-		$expiry            = '12/2025';
+		$expiry            = '2025-12-01';
 
 		// Mock HTTP responses for Payload API calls
 		CurlMocker::mockPaymentMethodGet( $payment_method_id, $card_brand, $last4, $expiry, null );

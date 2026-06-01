@@ -214,7 +214,7 @@ class CurlMocker {
 					'card'        => array(
 						'card_brand'  => 'visa',
 						'card_number' => '4111111111111111',
-						'expiry'      => '12/2025',
+						'expiry'      => '2025-12-01',
 					),
 				),
 			)
@@ -276,7 +276,7 @@ class CurlMocker {
 					'card'        => array(
 						'card_brand'  => 'visa',
 						'card_number' => '4111111111111111',
-						'expiry'      => '12/2025',
+						'expiry'      => '2025-12-01',
 					),
 				),
 			),

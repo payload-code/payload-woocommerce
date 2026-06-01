@@ -28,7 +28,7 @@ namespace Payload {
 				'card' => array(
 					'card_brand'  => 'visa',
 					'card_number' => '4111111111111111',
-					'expiry'      => '12/2025',
+					'expiry'      => '2031-12-31',
 				),
 			);
 		}
@@ -59,7 +59,7 @@ namespace Payload {
 				'card'        => array(
 					'card_brand'  => 'visa',
 					'card_number' => '4111111111111111',
-					'expiry'      => '12/2025',
+					'expiry'      => '2031-12-31',
 				),
 			);
 
