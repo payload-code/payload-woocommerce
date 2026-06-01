@@ -1,5 +1,9 @@
 == Changelog ==
 
+= v1.4.4 =
+
+* Fixed saved card expiry date displaying incorrectly on the Payment Methods page
+
 = v1.4.3 =
 
 * Saved payment methods on classic checkout

@@ -3,7 +3,7 @@
  * Plugin Name: Payload WooCommerce
  * Plugin URI: https://github.com/payload-code/payload-woocommerce
  * Description: Accept WooCommerce payments through Payload.com.
- * Version: 1.4.3
+ * Version: 1.4.4
  * Author: Payload
  * Author URI: https://payload.com
  * Requires Plugins: woocommerce
@@ -32,7 +32,7 @@ define( 'PAYLOAD_CUSTOMER_ID_META_KEY', 'payload_customer_id' );
  *
  * @since 1.5.0
  */
-define( 'PAYLOAD_WC_VERSION', '1.4.3' );
+define( 'PAYLOAD_WC_VERSION', '1.4.4' );
 
 /**
  * Initialize WooCommerce Payload integration.
